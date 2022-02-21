@@ -4,10 +4,11 @@ project(trabalho_redes)
 
 set(CMAKE_C_FLAGS "-Wall")
 
-#file(GLOB trabalho_redes CONFIGURE_DEPENDS "*.h" "*.c")
 set(trabalho_redes "main.c"
+				   "packet.c"
+				   "receiver"
 				   "router.c"
-				   "package.c"
+				   "table_handler.c"
 				   "utils.c"
 )
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
