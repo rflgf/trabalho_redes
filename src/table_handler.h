@@ -1,11 +1,14 @@
-
 #ifndef TABLE_HANDLER
 #define TABLE_HANDLER
+
+#include "router.h"
+#include "packet.h"
+#include "utils.h"
 
 struct table_item {
 	router_id		   destination;
 	router_id		   neighbouring_router; /* the neighbouring router used to get to `destination`. */
-	length			   cost;
+	cost			   cost;
 	struct table_item *next;
 };
 

@@ -1,6 +1,8 @@
 #ifndef ROUTER
 #define ROUTER
 
+#include <stdbool.h>
+
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
@@ -11,6 +13,11 @@ typedef int router_id;
 typedef int cost;
 
 /*
+struct sockaddr {
+    unsigned short    sa_family;    // address family, AF_xxx
+    char              sa_data[14];  // 14 bytes of protocol address
+};
+
 struct sockaddr_in {
     short            sin_family;   // e.g. AF_INET, AF_INET6
     unsigned short   sin_port;     // e.g. htons(3490)
@@ -24,9 +31,11 @@ struct in_addr {
 */
 
 struct link {
-	router_id	 neighbour_id;
-	cost		 cost_to_neighbour;
-	struct link *next;
+	router_id		   id;
+	cost			   cost_to;
+	bool			   enabled;
+	struct sockaddr_in socket;
+	struct link		  *next;
 };
 
 struct router {

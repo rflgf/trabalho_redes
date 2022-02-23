@@ -18,7 +18,7 @@ char *serialize(struct packet *packet)
 
 	switch (packet->type)
 	{
-		case control:
+		case CONTROL:
 			/*
 				formatting as follows
 				c source_virtual_addr destination_virtual_addr
@@ -31,12 +31,12 @@ char *serialize(struct packet *packet)
 
 			// payload can't take up the last or first few chars of the packet.
 			int index = 1;
-			struct distance_vector dv = packet->distance;
-			while (distance_vector)
+			struct distance_vector *dv = packet->payload.distance;
+			while (dv)
 			{
-				prior_index = index;
-				index += sprintf(&serialized_packet[index], "%d %d\n", distance_vector->router_id, distance_vector->distance);
-				distance_vector = distance_vector->next;
+				int prior_index = index;
+				index += sprintf(&serialized_packet[index], "%d %d\n", dv->virtual_address, dv->distance);
+				dv = dv->next;
 
 				// if the content is bigger than 98 chars, we
 				// simply ignore the rest of it.
@@ -47,10 +47,10 @@ char *serialize(struct packet *packet)
 				}
 			}
 
-			free_distance_vector(packet->distance);
+			free_distance_vector(packet->payload.distance);
 			break;
 
-		case data;
+		case DATA:
 			/*
 				formatting as follows
 				d source_virtual_addr destination_virtual_addr
@@ -63,8 +63,8 @@ char *serialize(struct packet *packet)
 			serialized_packet[0] = 'd';
 
 			// payload can't take up the last and first char of the packet.
-			memcpy(&serialized_packet[1], packet->payload->message, PAYLOAD_MAX_LENGTH - 1);
-			free(packet->message);
+			memcpy(&serialized_packet[1], packet->payload.message, PAYLOAD_MAX_LENGTH - 1);
+			free(packet->payload.message);
 			break;
 	}
 
@@ -81,23 +81,23 @@ struct packet *deserialize(char *serialized_packet)
 	switch (serialized_packet[0])
 	{
 		case 'c':
-			deserialized_packet->type = control;
+			deserialized_packet->type = CONTROL;
 
 			while (index < PAYLOAD_MAX_LENGTH - 1)
 			{
 				if (serialized_packet[index + 1] == '\0')
 					break;
 
-				struct distance_vector *dv = malloc(sizeof(distance_vector));
-				index += sscanf(serialized_packet[index], "%d %d", &distance_vector->virtual_address, &distance_vector->distance);
+				struct distance_vector *dv = malloc(sizeof(struct distance_vector));
+				index += sscanf(serialized_packet[index], "%d %d", &dv->virtual_address, &dv->distance);
 
-				distance_vector->next = NULL;
+				dv->next = NULL;
 			}
 			break;
 
 		case 'd':
-			deserialized_packet->type = data;
-			strcpy(&deserialized_packet->payload->message, &serialized_packet[1]);
+			deserialized_packet->type = DATA;
+			strcpy(&deserialized_packet->payload.message, &serialized_packet[1]);
 			break;
 
 		default:
@@ -105,5 +105,5 @@ struct packet *deserialize(char *serialized_packet)
 	}
 
 	free(serialized_packet);
-	return deserealized_packet;
+	return deserialized_packet;
 }

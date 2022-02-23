@@ -28,7 +28,7 @@ struct router* create_router(int id, int port, struct in_addr ip_address)
 
     udp_socket->sin_family		= AF_INET;
     udp_socket->sin_port		= htons(port);
-    udp_socket->sin_addr.s_addr = htonl(INADDR_ANY);
+    udp_socket->sin_addr.s_addr = htonl(INADDR_ANY); // @TODO i dont think this shouold use htonl
 
     // bind socket to port
     if (bind(socket, (struct sockaddr*) &udp_socket, sizeof(udp_socket)) == -1)

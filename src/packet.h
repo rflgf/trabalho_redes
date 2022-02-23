@@ -1,6 +1,7 @@
 #ifndef	PACKET
 #define PACKET
 #include "router.h"
+#include "utils.h"
 
 #define PAYLOAD_MAX_LENGTH 100
 
@@ -13,7 +14,7 @@ enum packet_type {
 
 struct distance_vector {
 	virtual_address			virtual_address;
-	length	  				distance; // a.k.a. cost
+	cost					distance; // a.k.a. cost
 	struct distance_vector *next;
 };
 

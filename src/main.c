@@ -10,10 +10,15 @@
 #include "utils.h"
 #include "packet.h"
 #include "router.h"
+#include "table_handler.h"
+#include "packet_handler.h"
+#include "sender.h"
+#include "listener.h"
 
 #define SERVER "127.0.0.1"
 #define PORT   8888		// the port on which to send data
 
+/*
 struct router_meta_info {
 	int id,
 		port;
@@ -22,26 +27,27 @@ struct router_meta_info {
 };
 
 struct router_meta_info *router;
-
-void *listener_f (void *);
-void *sender_f   (void *);
-void *handler_f  (void *);
+*/
 
 enum menu_options {
-	quit,
-	sleep_or_wake,
-	list_links,
-	remove_link
+	QUIT,
+	SEND_MESSAGE,
+	SLEEP_OR_WAKE,
+	LIST_LINKS
 };
 
 int main(int argc, char **argv)
 {
+	if (parse_args(argc, argv))
+		return -1;
+
 	int error_check;
 
 	// main thread will handle the terminal stuff.
 	pthread_t receiver,
 			  sender,
-			  packet_handler;
+			  packet_handler,
+			  table_handler;
 
 	// receiver
 	error_check = pthread_create(&receiver, NULL, listener_f, NULL);
@@ -54,15 +60,20 @@ int main(int argc, char **argv)
 		die("Erro pthread_create sender");
 
 	// packet_handler
-	error_check = pthread_create(&packet_handler, NULL, handler_f, NULL);
+	error_check = pthread_create(&packet_handler, NULL, packet_handler_f, NULL);
 	if (error_check)
 		die("Erro pthread_create packet_handler");
+
+	// table_handler
+	error_check = pthread_create(&table_handler, NULL, table_handler_f, NULL);
+	if (error_check)
+		die("Erro pthread_create table_handler");
 
 	bool run;
 
 	while (run)
 	{
-		printf("ID: %d\n", router->id);
+		printf("ID: %d\n", me.id);
 		printf("Escolha alguma das opções:\n");
 		printf("\t1 - Sair\n");
 		printf("\t2 - Desligar roteador\n");
@@ -74,17 +85,17 @@ int main(int argc, char **argv)
 
 		switch (input)
 		{
-			case quit:
+			case QUIT:
 				run = !run;
 				break;
 
-			case sleep_or_wake:
+			case SEND_MESSAGE:
 				break;
 
-			case list_links:
+			case SLEEP_OR_WAKE:
 				break;
 
-			case remove_link:
+			case LIST_LINKS:
 				break;
 
 			default:
@@ -106,8 +117,9 @@ int main(int argc, char **argv)
 	if (error_check)
 		die("Erro pthread_join no packet_handler\n");
 
-	if (parse_args(argc, argv))
-		return -1;
+	error_check = pthread_join(&table_handler, NULL);
+	if (error_check)
+		die("Erro pthread_join no table_handler\n");
 
 	return 0;
 }
