@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <semaphore.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
@@ -14,7 +15,7 @@ typedef int cost;
 
 char router_filename[100] = "roteador.config";
 char link_filename[100]   = "enlaces.config";
-time_t timeout			   = 6;
+time_t timeout			  = 6;					// in seconds
 
 struct router_meta_info {
 	struct in_addr ip_address;

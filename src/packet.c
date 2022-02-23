@@ -107,3 +107,49 @@ struct packet *deserialize(char *serialized_packet)
 	free(serialized_packet);
 	return deserialized_packet;
 }
+
+void push(struct packet_queue *queue, struct packet *packet)
+{
+	sem_wait(&queue->lock);
+
+	struct queue_item *qi = queue->head;
+	if (!qi)
+	{
+		struct queue_item *new_queue_item = malloc(sizeof(struct queue_item));
+		new_queue_item->packet = packet;
+		new_queue_item->next = NULL;
+		queue->head = new_queue_item;
+	}
+	else
+	{
+		while (qi->next)
+			qi = qi->next;
+
+		struct queue_item *new_queue_item = malloc(sizeof(struct queue_item));
+		new_queue_item->next = NULL;
+		new_queue_item->packet = packet;
+		qi->next = new_queue_item;
+	}
+
+	sem_post(&queue->lock);
+}
+
+void pop(struct packet_queue *queue)
+{
+	sem_wait(&queue->lock);
+
+	struct queue_item *qi = queue->head;
+	if (!qi)
+		die("tentativa de pop() em fila vazia");
+	else
+		while (qi->next)
+			qi = qi->next;
+
+	free(qi->packet);
+	qi->packet = NULL;
+
+	free(qi);
+	qi->next = NULL; // is this a thing?
+
+	sem_post(&queue->lock);
+}

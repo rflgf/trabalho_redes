@@ -80,4 +80,3 @@ void remove_link()
 	// remove every distance vector from the table that has its origin from the link in question
 	// @TODO acquire mutexes to do so
 }
-

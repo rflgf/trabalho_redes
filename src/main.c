@@ -15,20 +15,6 @@
 #include "sender.h"
 #include "listener.h"
 
-#define SERVER "127.0.0.1"
-#define PORT   8888		// the port on which to send data
-
-/*
-struct router_meta_info {
-	int id,
-		port;
-	struct in_addr ip_address; // IPv4 address in binary form
-	struct router_meta_info *next;
-};
-
-struct router_meta_info *router;
-*/
-
 enum menu_options {
 	QUIT,
 	SEND_MESSAGE,
@@ -41,6 +27,10 @@ int main(int argc, char **argv)
 	if (parse_args(argc, argv))
 		return -1;
 
+	// initializing semaphore stuff.
+	sem_init(&me.input.lock, 0, 1);
+	sem_init(&me.output.lock, 0, 1);
+
 	int error_check;
 
 	// main thread will handle the terminal stuff.
@@ -50,22 +40,22 @@ int main(int argc, char **argv)
 			  table_handler;
 
 	// receiver
-	error_check = pthread_create(&receiver, NULL, listener_f, NULL);
+	error_check = pthread_create(receiver, NULL, listener_f, NULL);
 	if (error_check)
 		die("Erro pthread_create receiver");
 
 	// sender
-	error_check = pthread_create(&sender, NULL, sender_f, NULL);
+	error_check = pthread_create(sender, NULL, sender_f, NULL);
 	if (error_check)
 		die("Erro pthread_create sender");
 
 	// packet_handler
-	error_check = pthread_create(&packet_handler, NULL, packet_handler_f, NULL);
+	error_check = pthread_create(packet_handler, NULL, packet_handler_f, NULL);
 	if (error_check)
 		die("Erro pthread_create packet_handler");
 
 	// table_handler
-	error_check = pthread_create(&table_handler, NULL, table_handler_f, NULL);
+	error_check = pthread_create(table_handler, NULL, table_handler_f, NULL);
 	if (error_check)
 		die("Erro pthread_create table_handler");
 
@@ -75,13 +65,16 @@ int main(int argc, char **argv)
 	{
 		printf("ID: %d\n", me.id);
 		printf("Escolha alguma das opções:\n");
-		printf("\t1 - Sair\n");
-		printf("\t2 - Desligar roteador\n");
+		printf("\t0 - Sair\n");
+		printf("\t1 - Enviar mensagem\n");
+		if (me.enabled)
+			printf("\t2 - Desligar roteador\n");
+		else
+			printf("\t2 - Ligar roteador\n");
 		printf("\t3 - Ver enlaces do roteador\n");
-		printf("\t4 - Desligar um enlace\n");
 
 		enum menu_options input;
-		scanf("%d", &input);
+		scanf("%d", (int *) &input);
 
 		switch (input)
 		{
@@ -90,7 +83,7 @@ int main(int argc, char **argv)
 				break;
 
 			case SEND_MESSAGE:
-				break;
+					break;
 
 			case SLEEP_OR_WAKE:
 				break;

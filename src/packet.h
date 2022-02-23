@@ -1,11 +1,12 @@
 #ifndef	PACKET
 #define PACKET
-#include "router.h"
+#include <semaphore.h>
+
 #include "utils.h"
 
 #define PAYLOAD_MAX_LENGTH 100
 
-typedef int virtual_address;
+typedef int router_id;
 
 enum packet_type {
 	CONTROL,
@@ -13,7 +14,7 @@ enum packet_type {
 };
 
 struct distance_vector {
-	virtual_address			virtual_address;
+	router_id				virtual_address;
 	cost					distance; // a.k.a. cost
 	struct distance_vector *next;
 };
@@ -25,8 +26,8 @@ union payload {
 
 struct packet {
 	enum packet_type	type;
-	virtual_address		source;
-	virtual_address		destination;
+	router_id			source;
+	router_id			destination;
 	union payload		payload;
 };
 
@@ -37,7 +38,7 @@ struct queue_item {
 
 struct packet_queue {
 	struct queue_item *head;
-
+	sem_t			   lock;
 };
 
 // returns a null-terminated string with at most 100 bytes
@@ -46,5 +47,12 @@ char *serialize(struct packet *packet);
 
 // destroys the string passed as argument.
 struct packet *deserialize(char *serialized_packet);
+
+
+// pushes packet to queue
+void push(struct packet_queue *queue, struct packet *packet);
+
+// pops the last packet out of the queue
+void pop(struct packet_queue *queue);
 
 #endif
