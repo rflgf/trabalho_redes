@@ -5,7 +5,6 @@ project(trabalho_redes)
 set(CMAKE_C_FLAGS "-Wall")
 
 set(trabalho_redes_src
-	"src/listener.c"
 	"src/main.c"
 	"src/packet.c"
 	"src/packet_handler.c"

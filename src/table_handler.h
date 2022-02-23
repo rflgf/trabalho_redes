@@ -20,6 +20,6 @@ void distributed_bellman_ford();
 
 void evaluate_distance_vector(router_id source, struct distance_vector *dv);
 
-void table_handler_f(void *data);
+void *table_handler_f(void *data);
 
 #endif

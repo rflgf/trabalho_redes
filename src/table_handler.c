@@ -1,6 +1,6 @@
 #include "table_handler.h"
 
-void table_handler_f(void *arg)
+void *table_handler_f(void *arg)
 {
 }
 

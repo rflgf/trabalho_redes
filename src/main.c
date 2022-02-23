@@ -13,7 +13,7 @@
 #include "table_handler.h"
 #include "packet_handler.h"
 #include "sender.h"
-#include "listener.h"
+#include "receiver.h"
 
 enum menu_options {
 	QUIT,
@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 
 	// initializing semaphore stuff.
 	sem_init(&me.input.lock, 0, 1);
-	sem_init(&me.output.lock, 0, 1);
+	sem_init(&me.output.lock, 0, MAX_QUEUE_ITEMS);
 
 	int error_check;
 
@@ -39,25 +39,10 @@ int main(int argc, char **argv)
 			  packet_handler,
 			  table_handler;
 
-	// receiver
-	error_check = pthread_create(receiver, NULL, listener_f, NULL);
-	if (error_check)
-		die("Erro pthread_create receiver");
-
-	// sender
-	error_check = pthread_create(sender, NULL, sender_f, NULL);
-	if (error_check)
-		die("Erro pthread_create sender");
-
-	// packet_handler
-	error_check = pthread_create(packet_handler, NULL, packet_handler_f, NULL);
-	if (error_check)
-		die("Erro pthread_create packet_handler");
-
-	// table_handler
-	error_check = pthread_create(table_handler, NULL, table_handler_f, NULL);
-	if (error_check)
-		die("Erro pthread_create table_handler");
+	pthread_create(&receiver, NULL, receiver_f, NULL);
+	pthread_create(&sender, NULL, sender_f, NULL);
+	pthread_create(&packet_handler, NULL, packet_handler_f, NULL);
+	pthread_create(&table_handler, NULL, table_handler_f, NULL);
 
 	bool run;
 
@@ -98,21 +83,21 @@ int main(int argc, char **argv)
 	}
 
 	// joins
-	error_check = pthread_join(&receiver, NULL);
+	error_check = pthread_join(receiver, NULL);
 	if (error_check)
-		die("Erro pthread_join no receiver\n");
+		die("Erro pthread_join no receiver");
 
-	error_check = pthread_join(&sender, NULL);
+	error_check = pthread_join(sender, NULL);
 	if (error_check)
-		die("Erro pthread_join no sender\n");
+		die("Erro pthread_join no sender");
 
-	error_check = pthread_join(&packet_handler, NULL);
+	error_check = pthread_join(packet_handler, NULL);
 	if (error_check)
-		die("Erro pthread_join no packet_handler\n");
+		die("Erro pthread_join no packet_handler");
 
-	error_check = pthread_join(&table_handler, NULL);
+	error_check = pthread_join(table_handler, NULL);
 	if (error_check)
-		die("Erro pthread_join no table_handler\n");
+		die("Erro pthread_join no table_handler");
 
 	return 0;
 }

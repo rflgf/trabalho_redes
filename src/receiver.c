@@ -4,7 +4,7 @@
 #include "packet.h"
 #include "router.h"
 
-void receiver_f(void *data)
+void *receiver_f(void *data)
 {
 	while (true)
 	{
@@ -17,8 +17,6 @@ void receiver_f(void *data)
 
 		struct packet *new_packet = deserialize(buffer);
 
-		sem_wait(&me.input.lock);
 		push(&me.input, new_packet);
-		sem_post(&me.input.lock);
 	}
 }

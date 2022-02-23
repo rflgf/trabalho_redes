@@ -1,6 +1,6 @@
 #ifndef RECEIVER
 #define RECEIVER
 
-void listener_f(void *);
+void *receiver_f(void *);
 
 #endif

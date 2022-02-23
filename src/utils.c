@@ -11,6 +11,8 @@
 #include "router.h"
 #include "table_handler.h"
 
+	#define MAX_QUEUE_ITEMS = 6 // @TODO maybe set it up so this can change at runtime
+
 typedef int cost;
 
 char router_filename[100] = "roteador.config";
