@@ -4,6 +4,8 @@
 #include "packet.h"
 #include "router.h"
 
+// does not deserialize anything, just listen, get queue semaphore and append message (as char) to queue
+
 void *receiver_f(void *data)
 {
 	while (true)

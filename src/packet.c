@@ -108,7 +108,7 @@ struct packet *deserialize(char *serialized_packet)
 	return deserialized_packet;
 }
 
-void push(struct packet_queue *queue, struct packet *packet)
+void enqueue(struct packet_queue *queue, struct packet *packet)
 {
 	sem_wait(&queue->lock);
 
@@ -117,24 +117,33 @@ void push(struct packet_queue *queue, struct packet *packet)
 	{
 		struct queue_item *new_queue_item = malloc(sizeof(struct queue_item));
 		new_queue_item->packet = packet;
-		new_queue_item->next = NULL;
-		queue->head = new_queue_item;
+		new_queue_item->next   = NULL;
+		queue->head			   = new_queue_item;
 	}
 	else
 	{
+		int queue_max_length_check = 0;
 		while (qi->next)
+		{
 			qi = qi->next;
+			if (queue_max_length_check >= MAX_QUEUE_LENGTH)
+			{
+				printf("fila cheia, descartando pacote.\n");
+				return;
+			}
+			queue_max_length_check++;
+		}
 
 		struct queue_item *new_queue_item = malloc(sizeof(struct queue_item));
-		new_queue_item->next = NULL;
+		new_queue_item->next   = NULL;
 		new_queue_item->packet = packet;
-		qi->next = new_queue_item;
+		qi->next			   = new_queue_item;
 	}
 
 	sem_post(&queue->lock);
 }
 
-void pop(struct packet_queue *queue)
+void dequeue(struct packet_queue *queue)
 {
 	sem_wait(&queue->lock);
 

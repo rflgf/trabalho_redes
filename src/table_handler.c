@@ -1,5 +1,8 @@
 #include "table_handler.h"
 
+	// every N seconds calculate my distance vector (make a function for this because packet_handler.c will need it too) and send it to every enabled link
+// check for timestamps associated with the table's distance vectors and remove the ones that are outdated
+
 void *table_handler_f(void *arg)
 {
 }

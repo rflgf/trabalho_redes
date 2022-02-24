@@ -24,11 +24,21 @@ union payload {
 	struct distance_vector *distance;
 };
 
-struct packet {
+// it may be the case that `payload` holds invalid memory, namely
+// when `destination` is not this router instance (i.e, `struct
+// router me`). maybe zero out or nullify the field so we don't
+// move garbage around and lead to UB or safety issues.
+
+struct deserialized {
 	enum packet_type	type;
 	router_id			source;
 	router_id			destination;
 	union payload		payload;
+};
+
+union packet {
+	char  *serialized;
+	struct deserialized;
 };
 
 struct queue_item {
@@ -45,14 +55,16 @@ struct packet_queue {
 // and destroys the packet object passed as argument.
 char *serialize(struct packet *packet);
 
-// destroys the string passed as argument.
-struct packet *deserialize(char *serialized_packet);
+// does not destroy anything.
+struct packet *deserialize_header(char *serialized_packet);
 
+// destroys the packet->payload.message.
+struct packet *deserialize_payload(struct packet *packet);
 
-// pushes packet to queue
-void push(struct packet_queue *queue, struct packet *packet);
+// append packet to the start of the queue
+void enqueue(struct packet_queue *queue, struct packet *packet);
 
-// pops the last packet out of the queue
-void pop(struct packet_queue *queue);
+// removes the last packet out of the queue
+void dequeue(struct packet_queue *queue);
 
 #endif
