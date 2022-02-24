@@ -17,8 +17,6 @@ void *receiver_f(void *data)
 		if (error_check == -1)
 			die("erro %d em recv\n", error_check);
 
-		struct packet *new_packet = deserialize(buffer);
-
-		push(&me.input, new_packet);
+		enqueue();
 	}
 }

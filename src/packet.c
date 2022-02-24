@@ -108,9 +108,46 @@ struct packet *deserialize(char *serialized_packet)
 	return deserialized_packet;
 }
 
-void enqueue(struct packet_queue *queue, struct packet *packet)
+void enqueue_to_input(char *serialized_packet)
 {
-	sem_wait(&queue->lock);
+	sem_wait(&me.input->lock);
+
+	if (!&me.input->head)
+	{
+		struct queue_item *new_head = malloc(sizeof(struct queue_item));
+		new_head->packet->serialized = serialized_packet;
+		new_head->next = NULL;
+		me.input->head = new_head;
+	}
+
+	else
+	{
+		int index = 0;
+		struct queue_item *qi = me.input->head;
+
+		while (qi->next)
+		{
+			if (index >= MAX_QUEUE_ITEMS)
+			{
+				printf("fila de input cheia, descartando pacote...\n");
+				return;
+			}
+			i++;
+			qi = qi->next;
+		}
+
+		struct queue_item *new = malloc(sizeof(struct queue_item));
+		new->next = NULL;
+		qi->next = new;
+		new->packet->serialized = serialized_packet;
+	}
+
+	sem_post(&me.input->lock);
+}
+
+void enqueue_to_output(struct packet *packet)
+{
+	sem_wait(&me.output->lock);
 
 	struct queue_item *qi = queue->head;
 	if (!qi)
@@ -120,6 +157,7 @@ void enqueue(struct packet_queue *queue, struct packet *packet)
 		new_queue_item->next   = NULL;
 		queue->head			   = new_queue_item;
 	}
+
 	else
 	{
 		int queue_max_length_check = 0;
@@ -128,7 +166,7 @@ void enqueue(struct packet_queue *queue, struct packet *packet)
 			qi = qi->next;
 			if (queue_max_length_check >= MAX_QUEUE_LENGTH)
 			{
-				printf("fila cheia, descartando pacote.\n");
+				printf("fila de output cheia, descartando pacote...\n");
 				return;
 			}
 			queue_max_length_check++;
@@ -140,7 +178,7 @@ void enqueue(struct packet_queue *queue, struct packet *packet)
 		qi->next			   = new_queue_item;
 	}
 
-	sem_post(&queue->lock);
+	sem_post(&me.output->lock);
 }
 
 void dequeue(struct packet_queue *queue)

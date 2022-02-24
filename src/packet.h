@@ -42,7 +42,7 @@ union packet {
 };
 
 struct queue_item {
-	struct packet	  *packet;
+	union packet	  *packet;
 	struct queue_item *next;
 };
 
@@ -61,8 +61,16 @@ struct packet *deserialize_header(char *serialized_packet);
 // destroys the packet->payload.message.
 struct packet *deserialize_payload(struct packet *packet);
 
-// append packet to the start of the queue
-void enqueue(struct packet_queue *queue, struct packet *packet);
+// append packet to the start of the output queue
+void enqueue_to_output(struct packet *packet);
+
+// append packet to the start of the input queue
+void enqueue_to_input(char *serialized_packet);
+
+#define enqueue(X) _Generic((X),		\
+	struct packet *: enqueue_to_output, \
+			 char *: enqueue_to_input,  \
+)(X)
 
 // removes the last packet out of the queue
 void dequeue(struct packet_queue *queue);
