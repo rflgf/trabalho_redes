@@ -28,6 +28,7 @@ struct link {
 	cost				cost_to;
 	bool				enabled;
 	time_t				last_heard_from;
+	struct in_addr		ip_address; // this may not be useful?
 	struct sockaddr_in	socket;
 	struct link		   *next;
 };
@@ -43,11 +44,14 @@ struct router {
 
 	struct link			*neighbouring_routers;
 
+	struct in_addr		 ip_address; // this may not be useful?
 	struct sockaddr_in	*udp_socket;
 	int					 file_descriptor;
 };
 
 struct router me;
+
+void initialize_router(int id, int port, char *ip_address);
 
 void create_socket();
 void destroy_socket();

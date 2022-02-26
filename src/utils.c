@@ -15,52 +15,74 @@ typedef int cost;
 
 char router_filename[100] = "roteador.config";
 char link_filename[100]   = "enlaces.config";
-time_t CONNECTION_TIMEOUT = 6;					// in seconds
-time_t SLEEP_TIME		  = 2;					// in seconds
-int MAX_QUEUE_ITEMS		  = 6;
-
-struct router_meta_info {
-	struct in_addr ip_address;
-	struct router_meta_info *next;
-};
-
-struct router_meta_info *router;
+time_t connection_timeout = 6;					// in seconds
+time_t sleep_time		  = 2;					// in seconds
+int max_queue_items		  = 6;
 
 void die(const char *format, ...)
 {
-    va_list args;
-    va_start(args, format);
-    vfprintf(stderr, format, args);
+	va_list args;
+	char color[200] = "\033[0;31m[ error ] ";
+	char *color_end = "\n\033[0m\0";
+    strcat(color, format);
+	strcat(color, color_end);
+	va_start(args, format);
+    vfprintf(stderr, color, args);
     va_end(args);
-    exit(1);
+	exit(1);
 }
 
 int parse_args(int argc, char **argv)
 {
+	me.neighbouring_routers = NULL;
+	me.table.items = NULL;
+	me.input.head = NULL;
+	me.output.head = NULL;
+
 	bool virt_address_provided = false;
 	int virt_add;
 
 	for (int i = 1; i < argc; i += 2)
 	{
 		if(argv[i][0] != '-' ||
-		   argv[i][1] != '-' ||
-		   argv[i][3] != '\0')
+		   argv[i][2] != '\0')
 		{
 		arg_inv:
 			printf("Argumento inválido: '%s'\n--h para ajuda.\n", argv[i]);
 			return PARSE_ERR_UNKOWN_ARG;
 		}
 
-		switch (argv[i][2])
+		switch (argv[i][1])
 		{
 			case 'h':
 				printf("Comando\t\tDescrição\n\n");
-				printf("--h\t\tMostrar esta mensagem\n\n");
-				printf("--a [virtual address]\tDefine [virtual address] como endereço virtual do socket\n");
-				printf("--r [file]\tDefine [file] como arquivo de configuração dos roteadores.\n\t\tSe omitido, 'roteador.config' será utilizado\n\n");
-				printf("--l [file]\tDefine [file] como arquivo de configuração dos enlaces.\n\t\tSe omitido, 'enlaces.config' será utilizado\n");
-				printf("--t [time]\tDefine [time] (em segundos) como tempo máximo de espera por uma mensagem de controle dos enlaces antes de removê-los indefinidamente. Se omitido, 6 será utilizado como padrão.\n");
+				printf("-h\t\tMostrar esta mensagem\n\n");
+				printf("-a [virtual address]\tDefine [virtual address] como endereço virtual do socket\n");
+				printf("-l [file]\tDefine [file] como arquivo de configuração dos enlaces.\n\t\tSe omitido, 'enlaces.config' será utilizado\n");
+				printf("-m [max]\tDefine [max] como numero máximo de itens por fila.\n");
+				printf("-r [file]\tDefine [file] como arquivo de configuração dos roteadores.\n\t\tSe omitido, 'roteador.config' será utilizado\n\n");
+				printf("-s [time]\tDefine [time] como tempo de congelamento da thread de envio de vetores distância e\n\tcontador do tempo entre mensagens de controles dos enlaces.\n");
+				printf("-t [time]\tDefine [time] (em segundos inteiros) como tempo máximo de espera por uma mensagem de controle\n\tdos enlaces antes de removê-los indefinidamente.\n\tSe omitido, 6 será utilizado como padrão.\n");
 				return -1;
+
+			case 'a':
+				if (i + 1 >= argc)
+					die("Endereço virtual do roteador não fornecido.\n");
+				virt_address_provided = true;
+				virt_add = atoi(argv[i + 1]);
+				break;
+
+			case 'l':
+				if (i + 1 >= argc)
+					goto no_file_provided;
+				strcpy(link_filename, argv[i + 1]);
+				break;
+
+			case 'm':
+				if (i + 1 >= argc)
+					die("Argumento para -m não fornecido.\n");
+				MAX_QUEUE_ITEMS = atoi(argv[i + 1]);
+				break;
 
 			case 'r':
 				if (i + 1 >= argc)
@@ -70,24 +92,16 @@ int parse_args(int argc, char **argv)
 				strcpy(router_filename, argv[i + 1]);
 				break;
 
-			case 'l':
+			case 's':
 				if (i + 1 >= argc)
-					goto no_file_provided;
-				strcpy(link_filename, argv[i + 1]);
-				break;
-
-			case 'a':
-				if (i + 1 >= argc)
-					die("Endereço virtual do roteador não fornecido.\n");
-				virt_address_provided = true;
-				virt_add = atoi(argv[i + 1]);
+					die("Argumento para -s não fornecido.\n");
+				SLEEP_TIME = (time_t) atoi(argv[i + 1]);
 				break;
 
 			case 't':
 				if (i + 1 >= argc)
-					die("Argumento para --t não fornecido.\n");
-				// @TODO verify whats the actual type of this and treat it
-				CONNECTION_TIMEOUT = atoi(argv[i + 1]);
+					die("Argumento para -t não fornecido.\n");
+				CONNECTION_TIMEOUT = (time_t) atoi(argv[i + 1]);
 				break;
 
 			default:
@@ -107,11 +121,11 @@ int parse_args(int argc, char **argv)
 	   is static and dictated exclusively by the charge files,
 	   not being possible to "create" new links at runtime,
 	   only enabling and disabling statically assigned ones. */
-	if (!parse_link_config(link_filename, me.id))
+	if (parse_link_config(link_filename, virt_add))
 		die("parse_link_config");
 
 	// calculate all possible routers
-	if (!parse_router_config((char *) router_filename, virt_add))
+	if (parse_router_config((char *) router_filename, virt_add))
 		die("parse_router_config");
 
 	return 0;
@@ -165,9 +179,8 @@ int parse_router_config(char *filename, router_id virtual_address)
 				continue;
 		}
 
-		// convert IP address to binary
-		if (!inet_aton((char *) &ip_address, &router->ip_address))
-			die("Erro em inet_aton()");
+		else
+			initialize_router(virtual_address, port, &ip_address[0]);
 
 	if (feof(desc))
 		break;

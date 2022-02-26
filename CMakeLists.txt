@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 
 project(trabalho_redes)
 
-set(CMAKE_C_FLAGS "-Wall")
+set(CMAKE_C_FLAGS "-Wall -g")
 
 set(trabalho_redes_src
 	"src/main.c"

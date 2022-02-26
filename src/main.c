@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 	pthread_create(&packet_handler, NULL, packet_handler_f, NULL);
 	pthread_create(&table_handler, NULL, table_handler_f, NULL);
 
-	bool run;
+	bool run = true;
 
 	while (run)
 	{
@@ -74,6 +74,15 @@ int main(int argc, char **argv)
 				break;
 
 			case LIST_LINKS:
+				// aquire mutex
+				printf("------- lista de enlaces -------\n\tid\tcusto/dist\thabilitado\n");
+				struct link *l;
+				for (l = me.neighbouring_routers; l; l = l->next)
+					printf("\t%d\t%d\t%s\n",
+						l->id,
+						l->cost_to,
+						l->enabled? "\033[0;32mV\033": "\033[0;31m-\033[0m");
+				printf("--------------------------------\n");
 				break;
 
 			default:
@@ -83,7 +92,7 @@ int main(int argc, char **argv)
 	}
 
 	// joins
-	error_check = pthread_join(receiver, NULL);
+	/*error_check = pthread_join(receiver, NULL);
 	if (error_check)
 		die("Erro pthread_join no receiver");
 
@@ -98,6 +107,6 @@ int main(int argc, char **argv)
 	error_check = pthread_join(table_handler, NULL);
 	if (error_check)
 		die("Erro pthread_join no table_handler");
-
+*/
 	return 0;
 }
