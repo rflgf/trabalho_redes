@@ -25,20 +25,20 @@ union payload {
 };
 
 // it may be the case that `payload` holds invalid memory, namely
-// when `destination` is not this router instance (i.e, `struct
+// when this router instance is not the `destination` (i.e, `struct
 // router me`). maybe zero out or nullify the field so we don't
 // move garbage around and lead to UB or safety issues.
-
 struct deserialized {
 	enum packet_type	type;
 	router_id			source;
 	router_id			destination;
+	int					index;
 	union payload		payload;
 };
 
 union packet {
-	char  *serialized;
-	struct deserialized;
+	char *serialized;
+	struct deserialized deserialized;
 };
 
 struct queue_item {
@@ -53,26 +53,27 @@ struct packet_queue {
 
 // returns a null-terminated string with at most 100 bytes
 // and destroys the packet object passed as argument.
-char *serialize(struct packet *packet);
+char *serialize(union packet *packet);
 
 // does not destroy anything.
-struct packet *deserialize_header(char *serialized_packet);
+void deserialize_header(union packet *serialized_packet);
 
-// destroys the packet->payload.message.
-struct packet *deserialize_payload(struct packet *packet);
+// meant to be used on the product of a `deserialize_header` call.
+void deserialize_payload(union packet *packet);
 
 // append packet to the start of the output queue
-void enqueue_to_output(struct packet *packet);
+void enqueue_to_output(union packet *packet);
 
 // append packet to the start of the input queue
 void enqueue_to_input(char *serialized_packet);
 
-#define enqueue(X) _Generic((X),		\
-	struct packet *: enqueue_to_output, \
-			 char *: enqueue_to_input,  \
+#define enqueue(X) _Generic((X),	   \
+	union packet *: enqueue_to_output, \
+			char *: enqueue_to_input   \
 )(X)
 
 // removes the last packet out of the queue
-void dequeue(struct packet_queue *queue);
+union packet *dequeue(struct packet_queue *queue);
 
+void free_packet();
 #endif

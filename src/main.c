@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 
 	// initializing semaphore stuff.
 	sem_init(&me.input.lock, 0, 1);
-	sem_init(&me.output.lock, 0, MAX_QUEUE_ITEMS);
+	sem_init(&me.output.lock, 0, 1);
 
 	int error_check;
 

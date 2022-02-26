@@ -1,4 +1,39 @@
+#include <arpa/inet.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "utils.h"
 #include "packet.h"
+
+typedef int router_id;
+typedef int cost;
+
+// ------ forward decls -------
+struct link {
+	router_id		   id;
+	cost			   cost_to;
+	bool			   enabled;
+	struct sockaddr_in socket;
+	struct link		  *next;
+};
+
+struct router {
+	router_id id;
+	bool	  enabled;
+
+	struct packet_queue  input;
+	struct packet_queue  output;
+
+	struct table		*table;
+
+	struct link			*neighbouring_routers;
+
+	struct sockaddr_in	*udp_socket;
+};
+
+struct router me;
+// ---- end forward decls -----
 
 void free_distance_vector(struct distance_vector *dv)
 {
@@ -12,11 +47,11 @@ void free_distance_vector(struct distance_vector *dv)
 
 // returns a null-terminated string with at most 100 bytes
 // and destroys the packet object passed as argument.
-char *serialize(struct packet *packet)
+char *serialize(union packet *packet)
 {
 	char *serialized_packet = calloc(PAYLOAD_MAX_LENGTH, sizeof(char));
 
-	switch (packet->type)
+	switch (packet->deserialized.type)
 	{
 		case CONTROL:
 			/*
@@ -31,7 +66,7 @@ char *serialize(struct packet *packet)
 
 			// payload can't take up the last or first few chars of the packet.
 			int index = 1;
-			struct distance_vector *dv = packet->payload.distance;
+			struct distance_vector *dv = packet->deserialized.payload.distance;
 			while (dv)
 			{
 				int prior_index = index;
@@ -47,7 +82,7 @@ char *serialize(struct packet *packet)
 				}
 			}
 
-			free_distance_vector(packet->payload.distance);
+			free_distance_vector(packet->deserialized.payload.distance);
 			break;
 
 		case DATA:
@@ -63,8 +98,8 @@ char *serialize(struct packet *packet)
 			serialized_packet[0] = 'd';
 
 			// payload can't take up the last and first char of the packet.
-			memcpy(&serialized_packet[1], packet->payload.message, PAYLOAD_MAX_LENGTH - 1);
-			free(packet->payload.message);
+			memcpy(&serialized_packet[1], packet->deserialized.payload.message, PAYLOAD_MAX_LENGTH - 1);
+			free(packet->deserialized.payload.message);
 			break;
 	}
 
@@ -72,58 +107,55 @@ char *serialize(struct packet *packet)
 	return serialized_packet;
 }
 
-// destroys the string passed as argument.
-struct packet *deserialize(char *serialized_packet)
+void deserialize_header(union packet *packet)
 {
-	struct packet *deserialized_packet = malloc(sizeof(struct packet));
-	int index = sscanf(serialized_packet[1], "%d %d", &deserialized_packet->source, &deserialized_packet->destination);
+	packet->deserialized.type = packet->serialized[0] == 'c'? CONTROL: DATA;
 
-	switch (serialized_packet[0])
+	sscanf(&packet->serialized[1], "%d %d", &packet->deserialized.source, &packet->deserialized.destination);
+
+	return packet;
+}
+
+void deserialize_payload(union packet *packet)
+{
+	int index = packet->deserialized.index;
+	switch (packet->deserialized.type)
 	{
-		case 'c':
-			deserialized_packet->type = CONTROL;
+		case CONTROL:
 
 			while (index < PAYLOAD_MAX_LENGTH - 1)
 			{
-				if (serialized_packet[index + 1] == '\0')
+				if (packet->serialized[index + 1] == '\0')
 					break;
 
 				struct distance_vector *dv = malloc(sizeof(struct distance_vector));
-				index += sscanf(serialized_packet[index], "%d %d", &dv->virtual_address, &dv->distance);
+				index += sscanf(&packet->serialized[index], "%d %d", &dv->virtual_address, &dv->distance);
 
 				dv->next = NULL;
 			}
 			break;
 
-		case 'd':
-			deserialized_packet->type = DATA;
-			strcpy(&deserialized_packet->payload.message, &serialized_packet[1]);
-			break;
-
 		default:
-			die("header do pacote corrompido.");
+			packet->deserialized.payload.message = &packet->serialized[1];
 	}
-
-	free(serialized_packet);
-	return deserialized_packet;
 }
 
 void enqueue_to_input(char *serialized_packet)
 {
-	sem_wait(&me.input->lock);
+	sem_wait(&me.input.lock);
 
-	if (!&me.input->head)
+	if (!&me.input.head)
 	{
 		struct queue_item *new_head = malloc(sizeof(struct queue_item));
 		new_head->packet->serialized = serialized_packet;
 		new_head->next = NULL;
-		me.input->head = new_head;
+		me.input.head = new_head;
 	}
 
 	else
 	{
 		int index = 0;
-		struct queue_item *qi = me.input->head;
+		struct queue_item *qi = me.input.head;
 
 		while (qi->next)
 		{
@@ -132,7 +164,7 @@ void enqueue_to_input(char *serialized_packet)
 				printf("fila de input cheia, descartando pacote...\n");
 				return;
 			}
-			i++;
+			index++;
 			qi = qi->next;
 		}
 
@@ -142,34 +174,34 @@ void enqueue_to_input(char *serialized_packet)
 		new->packet->serialized = serialized_packet;
 	}
 
-	sem_post(&me.input->lock);
+	sem_post(&me.input.lock);
 }
 
-void enqueue_to_output(struct packet *packet)
+void enqueue_to_output(union packet *packet)
 {
-	sem_wait(&me.output->lock);
+	sem_wait(&me.output.lock);
 
-	struct queue_item *qi = queue->head;
+	struct queue_item *qi = me.output.head;
 	if (!qi)
 	{
 		struct queue_item *new_queue_item = malloc(sizeof(struct queue_item));
 		new_queue_item->packet = packet;
 		new_queue_item->next   = NULL;
-		queue->head			   = new_queue_item;
+		me.output.head		   = new_queue_item;
 	}
 
 	else
 	{
-		int queue_max_length_check = 0;
+		int index = 0;
 		while (qi->next)
 		{
 			qi = qi->next;
-			if (queue_max_length_check >= MAX_QUEUE_LENGTH)
+			if (index >= MAX_QUEUE_ITEMS)
 			{
 				printf("fila de output cheia, descartando pacote...\n");
 				return;
 			}
-			queue_max_length_check++;
+			index++;
 		}
 
 		struct queue_item *new_queue_item = malloc(sizeof(struct queue_item));
@@ -178,10 +210,10 @@ void enqueue_to_output(struct packet *packet)
 		qi->next			   = new_queue_item;
 	}
 
-	sem_post(&me.output->lock);
+	sem_post(&me.output.lock);
 }
 
-void dequeue(struct packet_queue *queue)
+union packet *dequeue(struct packet_queue *queue)
 {
 	sem_wait(&queue->lock);
 
@@ -190,13 +222,16 @@ void dequeue(struct packet_queue *queue)
 		die("tentativa de pop() em fila vazia");
 	else
 		while (qi->next)
+		{
+			if (!qi->next->next)
+				qi->next->next = NULL;
 			qi = qi->next;
+		}
 
-	free(qi->packet);
-	qi->packet = NULL;
+		sem_post(&queue->lock);
 
 	free(qi);
-	qi->next = NULL; // is this a thing?
+	return qi->packet;
 
-	sem_post(&queue->lock);
 }
+

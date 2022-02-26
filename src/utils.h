@@ -1,5 +1,5 @@
-#ifndef UTILS
-#define UTILS
+	#ifndef UTILS
+	#define UTILS
 
 #include <stdlib.h>
 #include <stddef.h>
@@ -12,7 +12,9 @@
 #define PARSE_ERR_NO_VIRT_ADD_PROVIDED 4
 #define SOCKET_ERR_PORT				   5
 
-#define BUFLEN 512 // max length of buffer
+int MAX_QUEUE_ITEMS;
+time_t SLEEP_TIME;
+time_t CONNECTION_TIMEOUT;
 
 typedef int router_id;
 typedef int cost;
@@ -26,4 +28,6 @@ int parse_router_config(char *filename, int virtual_address);
 int parse_link_config(char *filename, int virtual_address);
 
 void add_link(router_id neighbour_id, cost cost);
+
+struct link *get_link_by_id(router_id id);
 #endif

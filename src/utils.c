@@ -11,13 +11,13 @@
 #include "router.h"
 #include "table_handler.h"
 
-	#define MAX_QUEUE_ITEMS = 6 // @TODO maybe set it up so this can change at runtime
-
 typedef int cost;
 
 char router_filename[100] = "roteador.config";
 char link_filename[100]   = "enlaces.config";
-time_t timeout			  = 6;					// in seconds
+time_t CONNECTION_TIMEOUT = 6;					// in seconds
+time_t SLEEP_TIME		  = 2;					// in seconds
+int MAX_QUEUE_ITEMS		  = 6;
 
 struct router_meta_info {
 	struct in_addr ip_address;
@@ -87,7 +87,7 @@ int parse_args(int argc, char **argv)
 				if (i + 1 >= argc)
 					die("Argumento para --t não fornecido.\n");
 				// @TODO verify whats the actual type of this and treat it
-				timeout = atoi(argv[i + 1]);
+				CONNECTION_TIMEOUT = atoi(argv[i + 1]);
 				break;
 
 			default:
