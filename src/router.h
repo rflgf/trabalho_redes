@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include <stdbool.h>
+#include <pthread.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
@@ -47,6 +48,8 @@ struct router {
 	struct in_addr		 ip_address; // this may not be useful?
 	struct sockaddr_in	*udp_socket;
 	int					 file_descriptor;
+
+	pthread_mutex_t		 mutex;
 };
 
 struct router me;

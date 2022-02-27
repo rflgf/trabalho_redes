@@ -32,6 +32,8 @@ void initialize_router(int id, int port, char *ip_address)
         die("erro ao fazer o bind.");
 
 	me.enabled = true;
+
+	pthread_mutex_init(&me.mutex, NULL);
 }
 
 void destruct_socket();

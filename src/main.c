@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <pthread.h>
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -40,10 +41,11 @@ int main(int argc, char **argv)
 			  table_handler;
 
 	pthread_create(&receiver, NULL, receiver_f, NULL);
+/*
 	pthread_create(&sender, NULL, sender_f, NULL);
 	pthread_create(&packet_handler, NULL, packet_handler_f, NULL);
 	pthread_create(&table_handler, NULL, table_handler_f, NULL);
-
+*/
 	bool run = true;
 
 	while (run)
@@ -68,21 +70,60 @@ int main(int argc, char **argv)
 				break;
 
 			case SEND_MESSAGE:
-					break;
+
+				printf("------------- nova mensagem -----------\n");
+				router_id destination;
+				char message[PAYLOAD_MAX_LENGTH]; // @TODO tratar tamanho correto da mensagem.
+				printf("para: ");
+				scanf("%d", &destination);
+
+				printf("mensagem: ");
+				scanf("%100s", message);
+				fflush(stdin);
+				printf("---------------------------------------\n");
+
+				if (destination == me.id)
+				{
+					// @TODO tratar isso
+					continue;
+				}
+
+				union packet *p = malloc(sizeof(union packet));
+				p->deserialized.type = DATA;
+				p->deserialized.source = me.id;
+				p->deserialized.destination = destination;
+				p->deserialized.index = 0;
+				p->deserialized.payload.message = message;
+				serialize(p, false); // @TODO make it so p isnt destroyed upon serialization
+
+				struct queue_item *qi = malloc(sizeof(struct queue_item));
+				qi->next = NULL;
+				qi->packet = p;
+
+				// get output queue mutex
+				// add qi
+				// release output mutex
+
+				break;
 
 			case SLEEP_OR_WAKE:
+				// @TODO acquire me mutex
+				me.enabled = !me.enabled;
+				// @TODO release me mutex
 				break;
 
 			case LIST_LINKS:
 				// aquire mutex
-				printf("------- lista de enlaces -------\n\tid\tcusto/dist\thabilitado\n");
+				printf("---------- lista de enlaces -----------\n\tid\tcusto/dist\thabilitado\n");
+				pthread_mutex_lock(&me.mutex);
 				struct link *l;
 				for (l = me.neighbouring_routers; l; l = l->next)
-					printf("\t%d\t%d\t%s\n",
+					printf("\t%d\t%d\t\t%s\n",
 						l->id,
 						l->cost_to,
-						l->enabled? "\033[0;32mV\033": "\033[0;31m-\033[0m");
-				printf("--------------------------------\n");
+						l->enabled? "\033[0;32mV\033[0m": "\033[0;31m-\033[0m");
+				pthread_mutex_unlock(&me.mutex);
+				printf("---------------------------------------\n");
 				break;
 
 			default:

@@ -27,7 +27,7 @@ void *table_handler_f(void *arg)
 		new_p->deserialized.source			 = me.id;
 		new_p->deserialized.destination		 = neighbour->id;
 		new_p->deserialized.payload.distance = calculate_distance_vector();
-		serialize(new_p);
+		serialize(new_p, true);
 		enqueue(new_p);
 	}
 

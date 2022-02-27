@@ -1,6 +1,7 @@
 #ifndef	PACKET
 #define PACKET
 #include <semaphore.h>
+#include <stdbool.h>
 
 #include "utils.h"
 
@@ -52,8 +53,9 @@ struct packet_queue {
 };
 
 // returns a null-terminated string with at most 100 bytes
-// and destroys the packet object passed as argument.
-char *serialize(union packet *packet);
+// and destroys the packet object passed as argument if
+// `destroy` is true.
+char *serialize(union packet *packet, bool destroy);
 
 // does not destroy anything.
 void deserialize_header(union packet *serialized_packet);

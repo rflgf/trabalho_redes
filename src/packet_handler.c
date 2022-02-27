@@ -35,7 +35,6 @@ void *packet_handler_f(void *arg)
 					printf("mensagem de [%d] para [%d]:\n", p->deserialized.source, p->deserialized.destination);
 					printf("\t%s\n", message);
 
-					// since p is not of type control we don't need to free p->deserialized->payload.distance.
 					free(p->deserialized.payload.message);
 			}
 					free(p->serialized);

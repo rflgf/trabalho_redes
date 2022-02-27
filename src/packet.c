@@ -46,8 +46,9 @@ void free_distance_vector(struct distance_vector *dv)
 }
 
 // returns a null-terminated string with at most 100 bytes
-// and destroys the packet object passed as argument.
-char *serialize(union packet *packet)
+// and destroys the packet object passed as argument if
+// `destroy` is true.
+char *serialize(union packet *packet, bool destroy)
 {
 	char *serialized_packet = calloc(PAYLOAD_MAX_LENGTH, sizeof(char));
 
@@ -99,11 +100,14 @@ char *serialize(union packet *packet)
 
 			// payload can't take up the last and first char of the packet.
 			memcpy(&serialized_packet[1], packet->deserialized.payload.message, PAYLOAD_MAX_LENGTH - 1);
-			free(packet->deserialized.payload.message);
+			if (destroy)
+				free(packet->deserialized.payload.message);
+
 			break;
 	}
 
-	free(packet);
+	if (destroy)
+		free(packet);
 	return serialized_packet;
 }
 
