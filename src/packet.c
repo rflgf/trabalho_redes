@@ -116,8 +116,6 @@ void deserialize_header(union packet *packet)
 	packet->deserialized.type = packet->serialized[0] == 'c'? CONTROL: DATA;
 
 	sscanf(&packet->serialized[1], "%d %d", &packet->deserialized.source, &packet->deserialized.destination);
-
-	return packet;
 }
 
 void deserialize_payload(union packet *packet)
@@ -146,7 +144,7 @@ void deserialize_payload(union packet *packet)
 
 void enqueue_to_input(char *serialized_packet)
 {
-	sem_wait(&me.input.lock);
+	pthread_mutex_lock(&me.input.mutex);
 
 	if (!&me.input.head)
 	{
@@ -178,12 +176,12 @@ void enqueue_to_input(char *serialized_packet)
 		new->packet->serialized = serialized_packet;
 	}
 
-	sem_post(&me.input.lock);
+	sem_post(&me.input.semaphore);
 }
 
 void enqueue_to_output(union packet *packet)
 {
-	sem_wait(&me.output.lock);
+	sem_wait(&me.output.semaphore);
 
 	struct queue_item *qi = me.output.head;
 	if (!qi)
@@ -214,16 +212,19 @@ void enqueue_to_output(union packet *packet)
 		qi->next			   = new_queue_item;
 	}
 
-	sem_post(&me.output.lock);
+	sem_post(&me.output.semaphore);
 }
 
 union packet *dequeue(struct packet_queue *queue)
 {
-	sem_wait(&queue->lock);
+	sem_wait(&queue->semaphore);
+
+	pthread_mutex_lock(&queue->mutex);
+	queue->current_size--;
 
 	struct queue_item *qi = queue->head;
-	if (!qi)
-		die("tentativa de pop() em fila vazia");
+	if (!qi || queue->current_size < 0)
+		die("tentativa de dequeue em fila vazia");
 	else
 		while (qi->next)
 		{
@@ -232,10 +233,8 @@ union packet *dequeue(struct packet_queue *queue)
 			qi = qi->next;
 		}
 
-		sem_post(&queue->lock);
-
+	union packet *ret = qi->packet;
 	free(qi);
-	return qi->packet;
-
+	pthread_mutex_unlock(&queue->head);
+	return ret;
 }
-

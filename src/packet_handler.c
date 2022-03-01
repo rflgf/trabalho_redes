@@ -25,7 +25,10 @@ void *packet_handler_f(void *arg)
 			switch (p->deserialized.type)
 			{
 				case CONTROL:
-					// @TODO do the control thing
+					deserialize_payload(p);
+					// @TODO check whether this is leaking memory.
+					// we may need to free p.
+					evaluate_distance_vector(p->deserialized.source, p->deserialized.payload.distance);
 					break;
 
 				default:

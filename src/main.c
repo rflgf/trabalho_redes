@@ -29,8 +29,8 @@ int main(int argc, char **argv)
 		return -1;
 
 	// initializing semaphore stuff.
-	sem_init(&me.input.lock, 0, 1);
-	sem_init(&me.output.lock, 0, 1);
+	sem_init(&me.input.semaphore, 0, 1);
+	sem_init(&me.output.semaphore, 0, 1);
 
 	int error_check;
 
@@ -51,14 +51,14 @@ int main(int argc, char **argv)
 	while (run)
 	{
 		printf("ID: %d\n", me.id);
-		printf("Escolha alguma das opções:\n");
-		printf("\t0 - Sair\n");
-		printf("\t1 - Enviar mensagem\n");
+		printf("escolha alguma das opções:\n");
+		printf("\t0 - sair\n");
+		printf("\t1 - enviar mensagem\n");
 		if (me.enabled)
-			printf("\t2 - Desligar roteador\n");
+			printf("\t2 - desligar roteador\n");
 		else
-			printf("\t2 - Ligar roteador\n");
-		printf("\t3 - Ver enlaces do roteador\n");
+			printf("\t2 - ligar roteador\n");
+		printf("\t3 - ver enlaces do roteador\n");
 
 		enum menu_options input;
 		scanf("%d", (int *) &input);
@@ -84,7 +84,10 @@ int main(int argc, char **argv)
 
 				if (destination == me.id)
 				{
-					// @TODO tratar isso
+					printf("---------- mensagem recebida ----------\n");
+					printf("de: %d\npara:%d\n", me.id, me.id);
+					printf("%s", message);
+					printf("---------------------------------------\n");
 					continue;
 				}
 
@@ -94,27 +97,25 @@ int main(int argc, char **argv)
 				p->deserialized.destination = destination;
 				p->deserialized.index = 0;
 				p->deserialized.payload.message = message;
-				serialize(p, false); // @TODO make it so p isnt destroyed upon serialization
+				serialize(p, false);
 
 				struct queue_item *qi = malloc(sizeof(struct queue_item));
 				qi->next = NULL;
 				qi->packet = p;
 
-				// get output queue mutex
-				// add qi
-				// release output mutex
+				enqueue(p);
 
 				break;
 
 			case SLEEP_OR_WAKE:
-				// @TODO acquire me mutex
+				pthread_mutex_lock(&me.mutex);
 				me.enabled = !me.enabled;
-				// @TODO release me mutex
+				pthread_mutex_unlock(&me.mutex);
 				break;
 
 			case LIST_LINKS:
-				// aquire mutex
-				printf("---------- lista de enlaces -----------\n\tid\tcusto/dist\thabilitado\n");
+				printf("---------- lista de enlaces -----------\n");
+				printf("\tid\tcusto/dist\thabilitado\n");
 				pthread_mutex_lock(&me.mutex);
 				struct link *l;
 				for (l = me.neighbouring_routers; l; l = l->next)
@@ -127,7 +128,7 @@ int main(int argc, char **argv)
 				break;
 
 			default:
-				printf("Opção inválida\n");
+				printf("opção inválida\n");
 				continue;
 		}
 	}

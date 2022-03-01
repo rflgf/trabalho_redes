@@ -22,6 +22,7 @@ struct table_item {
 
 struct 	table {
 	struct table_item *items;
+	pthread_mutex_t    mutex;
 };
 
 struct link {

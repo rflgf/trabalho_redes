@@ -49,7 +49,9 @@ struct queue_item {
 
 struct packet_queue {
 	struct queue_item *head;
-	sem_t			   lock;
+	int				   current_size;
+	pthread_mutex_t	   mutex;
+	sem_t			   semaphore; // at most MAX_QUEUE_ITEMS.
 };
 
 // returns a null-terminated string with at most 100 bytes
@@ -76,6 +78,8 @@ void enqueue_to_input(char *serialized_packet);
 
 // removes the last packet out of the queue
 union packet *dequeue(struct packet_queue *queue);
+
+void free_distance_vector(struct distance_vector *dv);
 
 void free_packet();
 #endif
