@@ -35,8 +35,7 @@ void die(const char *format, ...)
 int parse_args(int argc, char **argv)
 {
 	me.neighbouring_routers = NULL;
-	me.table.items = NULL;
-	me.input.head = NULL;
+	me.input.head  = NULL;
 	me.output.head = NULL;
 
 	bool virt_address_provided = false;

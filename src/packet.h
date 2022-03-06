@@ -26,9 +26,9 @@ union payload {
 };
 
 // it may be the case that `payload` holds invalid memory, namely
-// when this router instance is not the `destination` (i.e, `struct
-// router me`). maybe zero out or nullify the field so we don't
-// move garbage around and lead to UB or safety issues.
+// when this router instance is not `destination` (i.e, `struct
+// router me`). maybe zero out or nullify `payload` so we don't
+// move garbage around, leading to UB or safety issues.
 struct deserialized {
 	enum packet_type	type;
 	router_id			source;

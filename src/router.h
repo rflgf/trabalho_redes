@@ -15,14 +15,9 @@ typedef int cost;
 
 struct table_item {
 	router_id		   destination;
-	router_id		   neighbouring_router; /* the neighbouring router used to get to `destination`. */
+	router_id		   next_hop; /* the neighbouring router used to get to `destination`. */
 	cost			   cost;
 	struct table_item *next;
-};
-
-struct 	table {
-	struct table_item *items;
-	pthread_mutex_t    mutex;
 };
 
 struct link {
@@ -33,6 +28,7 @@ struct link {
 	struct in_addr		ip_address; // this may not be useful?
 	struct sockaddr_in	socket;
 	struct link		   *next;
+	struct distance_vector *last_dv;
 };
 
 struct router {
@@ -41,8 +37,6 @@ struct router {
 
 	struct packet_queue  input;
 	struct packet_queue  output;
-
-	struct table		 table;
 
 	struct link			*neighbouring_routers;
 

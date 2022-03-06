@@ -11,14 +11,14 @@ void *sender_f(void *arg)
 {
 	while (true)
 	{
-		sem_wait(&me.output.lock);
+		pthread_mutex_lock(&me.output.mutex);
 
 		struct queue_item *qi = me.output.head;
 		while (qi)
 		{
 			union packet *p = qi->packet;
-
-			router_id link = get_table_item_by_destination(p->deserialized.destination)->neighbouring_router;
+			struct table_item *table = calculate_table();
+			router_id link = get_table_item_by_destination(p->deserialized.destination, table)->next_hop;
 
 			struct sockaddr_in socket = get_link_by_id(link)->socket;
 
@@ -37,7 +37,7 @@ void *sender_f(void *arg)
 			qi = aux->next;
 		}
 
-		sem_post(&me.output.lock);
+		pthread_mutex_unlock(&me.output.mutex);
 	}
 
 }
