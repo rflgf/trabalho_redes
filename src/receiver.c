@@ -17,6 +17,12 @@ void *receiver_f(void *data)
 		if (error_check == -1)
 			die("erro %d em recv\n", error_check);
 
-		enqueue(buffer);
+		pthread_mutex_lock(&me.mutex);
+		if (me.enabled)
+		{
+			pthread_mutex_unlock(&me.mutex);
+			enqueue(buffer);
+		}
+		pthread_mutex_unlock(&me.mutex);
 	}
 }

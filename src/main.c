@@ -29,8 +29,8 @@ int main(int argc, char **argv)
 		return -1;
 
 	// initializing semaphore stuff.
-	sem_init(&me.input.semaphore, 0, 1);
-	sem_init(&me.output.semaphore, 0, 1);
+	sem_init(&me.input.semaphore, 0, 0);	// at most MAX_QUEUE_ITEMS.
+	sem_init(&me.output.semaphore, 0, 0);
 
 	int error_check;
 
@@ -41,11 +41,9 @@ int main(int argc, char **argv)
 			  table_handler;
 
 	pthread_create(&receiver, NULL, receiver_f, NULL);
-/*
 	pthread_create(&sender, NULL, sender_f, NULL);
 	pthread_create(&packet_handler, NULL, packet_handler_f, NULL);
 	pthread_create(&table_handler, NULL, table_handler_f, NULL);
-*/
 	bool run = true;
 
 	while (run)
@@ -54,10 +52,12 @@ int main(int argc, char **argv)
 		printf("escolha alguma das opções:\n");
 		printf("\t0 - sair\n");
 		printf("\t1 - enviar mensagem\n");
+		pthread_mutex_lock(&me.mutex);
 		if (me.enabled)
 			printf("\t2 - desligar roteador\n");
 		else
 			printf("\t2 - ligar roteador\n");
+		pthread_mutex_unlock(&me.mutex);
 		printf("\t3 - ver enlaces do roteador\n");
 
 		enum menu_options input;
@@ -134,7 +134,7 @@ int main(int argc, char **argv)
 	}
 
 	// joins
-	/*error_check = pthread_join(receiver, NULL);
+	error_check = pthread_join(receiver, NULL);
 	if (error_check)
 		die("Erro pthread_join no receiver");
 
@@ -149,6 +149,5 @@ int main(int argc, char **argv)
 	error_check = pthread_join(table_handler, NULL);
 	if (error_check)
 		die("Erro pthread_join no table_handler");
-*/
 	return 0;
 }

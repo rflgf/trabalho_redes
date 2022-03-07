@@ -157,6 +157,7 @@ struct distance_vector *calculate_distance_vector()
 					dv->distance = neighbours_dv->distance + neighbour->cost_to;
 		}
 	}
+	pthread_mutex_unlock(&me.mutex);
 	return ret_dv;
 }
 

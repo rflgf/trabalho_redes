@@ -15,9 +15,9 @@ typedef int cost;
 
 char router_filename[100] = "roteador.config";
 char link_filename[100]   = "enlaces.config";
-time_t connection_timeout = 6;					// in seconds
-time_t sleep_time		  = 2;					// in seconds
-int max_queue_items		  = 6;
+time_t CONNECTION_TIMEOUT = 6;					// in seconds
+time_t SLEEP_TIME		  = 2;					// in seconds
+int MAX_QUEUE_ITEMS		  = 6;
 
 void die(const char *format, ...)
 {
@@ -47,7 +47,7 @@ int parse_args(int argc, char **argv)
 		   argv[i][2] != '\0')
 		{
 		arg_inv:
-			printf("Argumento inválido: '%s'\n--h para ajuda.\n", argv[i]);
+			printf("Argumento inválido: '%s'\n-h para ajuda.\n", argv[i]);
 			return PARSE_ERR_UNKOWN_ARG;
 		}
 
@@ -69,6 +69,7 @@ int parse_args(int argc, char **argv)
 					die("Endereço virtual do roteador não fornecido.\n");
 				virt_address_provided = true;
 				virt_add = atoi(argv[i + 1]);
+				printf("add is: %d\n", virt_add);
 				break;
 
 			case 'l':
@@ -110,9 +111,11 @@ int parse_args(int argc, char **argv)
 
 	if (!virt_address_provided)
 	{
-		printf("Por favor, forneça um endereço virtual para o roteador. Para mais informações, utilize --h\n");
+		printf("Por favor, forneça um endereço virtual para o roteador. Para mais informações, utilize -h\n");
 		return PARSE_ERR_NO_VIRT_ADD_PROVIDED;
 	}
+	else
+		me.id = virt_add;
 
 	/* we calculate the links before the routers so we know from
 	   which routers we need to keep infomation such as as IP

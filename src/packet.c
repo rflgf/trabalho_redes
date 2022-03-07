@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 
 #include "utils.h"
 #include "packet.h"
@@ -146,6 +147,13 @@ void enqueue_to_input(char *serialized_packet)
 {
 	pthread_mutex_lock(&me.input.mutex);
 
+	if (me.input.current_size >= MAX_QUEUE_ITEMS)
+	{
+		printf("fila de input cheia, descartando pacote...\n");
+		pthread_mutex_unlock(&me.input.mutex);
+		return;
+	}
+
 	if (!&me.input.head)
 	{
 		struct queue_item *new_head = malloc(sizeof(struct queue_item));
@@ -156,19 +164,10 @@ void enqueue_to_input(char *serialized_packet)
 
 	else
 	{
-		int index = 0;
 		struct queue_item *qi = me.input.head;
 
 		while (qi->next)
-		{
-			if (index >= MAX_QUEUE_ITEMS)
-			{
-				printf("fila de input cheia, descartando pacote...\n");
-				return;
-			}
-			index++;
 			qi = qi->next;
-		}
 
 		struct queue_item *new = malloc(sizeof(struct queue_item));
 		new->next = NULL;
@@ -176,12 +175,21 @@ void enqueue_to_input(char *serialized_packet)
 		new->packet->serialized = serialized_packet;
 	}
 
+	me.input.current_size++;
+	pthread_mutex_unlock(&me.input.mutex);
 	sem_post(&me.input.semaphore);
 }
 
 void enqueue_to_output(union packet *packet)
 {
-	sem_wait(&me.output.semaphore);
+	pthread_mutex_lock(&me.output.mutex);
+
+	if (me.output.current_size >= MAX_QUEUE_ITEMS)
+	{
+		printf("fila de output cheia, descartando pacote...\n");
+		pthread_mutex_unlock(&me.output.mutex);
+		return;
+	}
 
 	struct queue_item *qi = me.output.head;
 	if (!qi)
@@ -191,20 +199,10 @@ void enqueue_to_output(union packet *packet)
 		new_queue_item->next   = NULL;
 		me.output.head		   = new_queue_item;
 	}
-
 	else
 	{
-		int index = 0;
 		while (qi->next)
-		{
 			qi = qi->next;
-			if (index >= MAX_QUEUE_ITEMS)
-			{
-				printf("fila de output cheia, descartando pacote...\n");
-				return;
-			}
-			index++;
-		}
 
 		struct queue_item *new_queue_item = malloc(sizeof(struct queue_item));
 		new_queue_item->next   = NULL;
@@ -212,6 +210,9 @@ void enqueue_to_output(union packet *packet)
 		qi->next			   = new_queue_item;
 	}
 
+	me.output.current_size++;
+
+	pthread_mutex_unlock(&me.output.mutex);
 	sem_post(&me.output.semaphore);
 }
 
@@ -235,6 +236,6 @@ union packet *dequeue(struct packet_queue *queue)
 
 	union packet *ret = qi->packet;
 	free(qi);
-	pthread_mutex_unlock(&queue->head);
+	pthread_mutex_unlock(&queue->mutex);
 	return ret;
 }
