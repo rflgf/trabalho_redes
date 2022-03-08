@@ -1,8 +1,16 @@
 #ifndef UTILS
 #define UTILS
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
+
+#ifdef DEBUG
+void debug(const char *format, ...);
+#else
+#define debug(...) (void)0 /* no-op */
+#endif
 
 // errors
 #define SUCCESS						   0

@@ -18,9 +18,12 @@ void *packet_handler_f(void *arg)
 
 	while (true)
 	{
+		printf("aq\n");
 		union packet* p = dequeue(&me.input);
+		printf("aq2\n");
 		deserialize_header(p);
 
+		printf("a23dasq\n");
 		if (p->deserialized.destination == me.id)
 		{
 			switch (p->deserialized.type)
@@ -54,6 +57,7 @@ void *packet_handler_f(void *arg)
 // `source` indicates what router address the DVs were sent by.
 void evaluate_distance_vector(router_id source, struct distance_vector *dv_start)
 {
+	debug("evaluate_distance_vector from packet_handler.c is acquiring me.mutex");
 	pthread_mutex_lock(&me.mutex);
 
 	struct link *source_link = get_link_by_id(source);

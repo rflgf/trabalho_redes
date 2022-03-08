@@ -79,7 +79,7 @@ char *serialize(union packet *packet, bool destroy)
 				// simply ignore the rest of it.
 				if (index >= PAYLOAD_MAX_LENGTH - 2)
 				{
-					serialized_packet[prior_index + 1] = '\0';
+					serialized_packet[prior_index] = '\0';
 					break;
 				}
 			}
@@ -145,6 +145,7 @@ void deserialize_payload(union packet *packet)
 
 void enqueue_to_input(char *serialized_packet)
 {
+	debug("enqueue_to_input from packet.c is acquiring me.input.mutex");
 	pthread_mutex_lock(&me.input.mutex);
 
 	if (me.input.current_size >= MAX_QUEUE_ITEMS)
@@ -182,6 +183,7 @@ void enqueue_to_input(char *serialized_packet)
 
 void enqueue_to_output(union packet *packet)
 {
+	debug("enqueue_to_output from packet.c is acquiring me.input.mutex");
 	pthread_mutex_lock(&me.output.mutex);
 
 	if (me.output.current_size >= MAX_QUEUE_ITEMS)
@@ -212,14 +214,18 @@ void enqueue_to_output(union packet *packet)
 
 	me.output.current_size++;
 
+	debug("enqueue_to_output from packet.c is releasing me.input.mutex");
 	pthread_mutex_unlock(&me.output.mutex);
 	sem_post(&me.output.semaphore);
 }
+
+#include <errno.h>
 
 union packet *dequeue(struct packet_queue *queue)
 {
 	sem_wait(&queue->semaphore);
 
+	debug("dequeue from packet.c is acquiring me.input.mutex");
 	pthread_mutex_lock(&queue->mutex);
 	queue->current_size--;
 

@@ -17,6 +17,7 @@ void *table_handler_f(void *arg)
 		struct distance_vector *dv = calculate_distance_vector(table);
 		time_t current_time = time(NULL);
 
+		debug("table_handler_f from table_handler.c is acquiring me.mutex");
 		pthread_mutex_lock(&me.mutex);
 		struct link *neighbour;
 		for (neighbour = me.neighbouring_routers; neighbour; neighbour = neighbour->next)
@@ -40,6 +41,7 @@ void *table_handler_f(void *arg)
 				enqueue(p);
 			}
 		}
+		debug("table_handler_f from table_handler.c is releasing me.mutex");
 		pthread_mutex_unlock(&me.mutex);
 		// @TODO free table
 		sleep(SLEEP_TIME);
@@ -50,6 +52,7 @@ void *table_handler_f(void *arg)
 cost get_link_cost(router_id id)
 {
 	struct link *n;
+	debug("get_link_cost from table_handler.c is acquiring me.mutex");
 	pthread_mutex_lock(&me.mutex);
 	for (n = me.neighbouring_routers; n; n = n->next)
 		if (n->id == id)
@@ -73,6 +76,7 @@ struct table_item *get_table_item_by_destination(router_id destination, struct t
 struct distance_vector *populate_dv_with_links()
 {
 	struct distance_vector *ret = NULL;
+	debug("populate_dv_with_links from table_handler.c is acquiring me.mutex");
 	pthread_mutex_lock(&me.mutex);
 
 	struct link *neighbour;
@@ -122,6 +126,7 @@ struct distance_vector *calculate_distance_vector()
 {
 	struct distance_vector *ret_dv = populate_dv_with_links();
 
+	debug("calculate_distance_vector from table_handler.c is acquiring me.mutex");
 	pthread_mutex_lock(&me.mutex);
 
 	struct link *neighbour;
@@ -163,6 +168,7 @@ struct distance_vector *calculate_distance_vector()
 
 void remove_link(struct link *neighbour)
 {
+	debug("remove_link from table_handler.c is acquiring me.mutex");
 	pthread_mutex_lock(&me.mutex);
 	neighbour->enabled = false;
 	free_distance_vector(neighbour->last_dv);
@@ -172,6 +178,7 @@ void remove_link(struct link *neighbour)
 struct table_item *populate_table_with_links()
 {
 	struct table_item *ret = NULL;
+	debug("populate_table_with_links from table_handler.c is acquiring me.mutex");
 	pthread_mutex_lock(&me.mutex);
 
 	struct link *neighbour;
@@ -192,6 +199,7 @@ struct table_item *populate_table_with_links()
 				ret		  = new_item;
 			}
 		}
+	debug("populate_table_with_links from table_handler.c is releasing me.mutex");
 	pthread_mutex_unlock(&me.mutex);
 	return ret;
 }
@@ -215,6 +223,7 @@ struct table_item *calculate_table()
 {
 	struct table_item *ret_table = populate_table_with_links();
 
+	debug("calculate_table from table_handler.c is acquiring me.mutex");
 	pthread_mutex_lock(&me.mutex);
 
 	struct link *neighbour;

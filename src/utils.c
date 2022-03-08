@@ -11,6 +11,18 @@
 #include "router.h"
 #include "table_handler.h"
 
+#ifdef DEBUG
+void debug(const char *format, ...)
+{
+    printf("\033[0;36m[ debug ] \033[0m"); // cyan
+    va_list args;
+    va_start(args, format);
+    vfprintf(stdout, format, args);
+    va_end(args);
+    printf("\n");
+}
+#endif
+
 typedef int cost;
 
 char router_filename[100] = "roteador.config";
@@ -69,7 +81,6 @@ int parse_args(int argc, char **argv)
 					die("Endereço virtual do roteador não fornecido.\n");
 				virt_address_provided = true;
 				virt_add = atoi(argv[i + 1]);
-				printf("add is: %d\n", virt_add);
 				break;
 
 			case 'l':

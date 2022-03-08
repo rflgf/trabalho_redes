@@ -34,6 +34,8 @@ void initialize_router(int id, int port, char *ip_address)
 	me.enabled = true;
 
 	pthread_mutex_init(&me.mutex, NULL);
+	pthread_mutex_init(&me.input.mutex, NULL);
+	pthread_mutex_init(&me.output.mutex, NULL);
 }
 
 void destruct_socket();

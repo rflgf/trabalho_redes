@@ -117,6 +117,7 @@ int main(int argc, char **argv)
 				printf("---------- lista de enlaces -----------\n");
 				printf("\tid\tcusto/dist\thabilitado\n");
 				pthread_mutex_lock(&me.mutex);
+				printf("a\n");
 				struct link *l;
 				for (l = me.neighbouring_routers; l; l = l->next)
 					printf("\t%d\t%d\t\t%s\n",
