@@ -36,6 +36,7 @@ struct router {
 	int					 file_descriptor;
 
 	pthread_mutex_t		 mutex;
+	pthread_mutex_t		 terminal_mutex;
 };
 
 struct router me;
@@ -77,8 +78,7 @@ char *serialize(struct packet *packet, bool destroy)
 			while (dv)
 			{
 				int prior_index = index;
-				index += sprintf(&serialized_packet[index], "%d %d\n", dv->virtual_address, dv->distance);
-				debug("index = %d, src = %d, dist = %d", index, dv->virtual_address, dv->distance);
+				index += sprintf(&serialized_packet[index], "%d %d ", dv->virtual_address, dv->distance);
 				dv = dv->next;
 
 				// if the content is bigger than 98 chars, we
@@ -87,13 +87,11 @@ char *serialize(struct packet *packet, bool destroy)
 				// content into multiple packets.
 				if (index >= PAYLOAD_MAX_LENGTH - 2)
 				{
-					debug("breaking at %d", index);
 					serialized_packet[prior_index] = '\0';
 					break;
 				}
 			}
 
-			debug("final str is %s", &serialized_packet);
 
 			if (destroy)
 				free_distance_vector(packet->deserialized.payload.distance);
@@ -119,9 +117,10 @@ char *serialize(struct packet *packet, bool destroy)
 			break;
 	}
 
+	packet->serialized = serialized_packet;
+
 	if (destroy)
 		free(packet);
-	debug("serializedpacket:\n%s", serialized_packet);
 	return serialized_packet;
 }
 
@@ -201,7 +200,9 @@ void enqueue_to_output(struct packet *packet)
 
 	if (me.output.current_size >= MAX_QUEUE_ITEMS)
 	{
+		pthread_mutex_lock(&me.terminal_mutex);
 		printf("fila de output cheia, descartando pacote...\n");
+		pthread_mutex_unlock(&me.terminal_mutex);
 		pthread_mutex_unlock(&me.output.mutex);
 		return;
 	}
@@ -232,28 +233,19 @@ void enqueue_to_output(struct packet *packet)
 	sem_post(&me.output.semaphore);
 }
 
-#include <errno.h>
-
 struct packet *dequeue(struct packet_queue *queue)
 {
 	sem_wait(&queue->semaphore);
 
 	debug("dequeue from packet.c is acquiring me.input.mutex");
 	pthread_mutex_lock(&queue->mutex);
-	queue->current_size--;
 
-	// @TODO this isnt aqueue rofl
 	struct queue_item *qi = queue->head;
+	queue->head = qi->next;
 	if (!qi || queue->current_size < 0)
 		die("tentativa de dequeue em fila vazia");
-	else
-		while (qi->next)
-		{
-			if (!qi->next->next)
-				qi->next->next = NULL;
-			qi = qi->next;
-		}
 
+	queue->current_size--;
 	struct packet *ret = qi->packet;
 	free(qi);
 	pthread_mutex_unlock(&queue->mutex);

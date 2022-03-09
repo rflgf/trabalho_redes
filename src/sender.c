@@ -13,14 +13,10 @@ void *sender_f(void *arg)
 	{
 		struct table_item *table = calculate_table();
 		struct packet *p = dequeue(&me.output);
-		debug("%x", &p->deserialized);
-		debug("trying to deserialize packet to %d", p->deserialized.destination);
 		struct table_item *t = get_table_item_by_destination(p->deserialized.destination, table);
 		if (!t)
 			die("get_table_item_by_destination");
 		router_id link = t->next_hop;
-
-		debug("str is: %s", p->serialized);
 
 		struct sockaddr_in socket = get_link_by_id(link)->socket;
 

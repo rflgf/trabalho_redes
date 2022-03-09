@@ -21,16 +21,17 @@ void *table_handler_f(void *arg)
 		pthread_mutex_lock(&me.mutex);
 		struct link *neighbour;
 		for (neighbour = me.neighbouring_routers; neighbour; neighbour = neighbour->next)
-		{
-			if (!neighbour->enabled && neighbour->last_heard_from + CONNECTION_TIMEOUT > current_time)
-			{
-				printf("conexão com %d alcançou o tempo limite de espera,\ndesconectando removendo enlace...\n", neighbour->id);
-				free_distance_vector(neighbour->last_dv);
-				neighbour->enabled = false;
-			}
-
 			if (neighbour->enabled)
 			{
+				neighbour->last_heard_from = current_time;
+
+				if (neighbour->last_heard_from + CONNECTION_TIMEOUT > current_time)
+				{
+					printf("conexão com %d alcançou o tempo limite de espera,\ndesconectando removendo enlace...\n", neighbour->id);
+					free_distance_vector(neighbour->last_dv);
+					neighbour->enabled = false;
+				}
+
 				struct packet *p = malloc(sizeof(struct packet));
 				p->deserialized.type = CONTROL;
 				p->deserialized.source = me.id;
@@ -40,7 +41,6 @@ void *table_handler_f(void *arg)
 				serialize(p, false);
 				enqueue(p);
 			}
-		}
 		debug("table_handler_f from table_handler.c is releasing me.mutex");
 		pthread_mutex_unlock(&me.mutex);
 		// @TODO free table
@@ -76,6 +76,7 @@ struct table_item *get_table_item_by_destination(router_id destination, struct t
 struct distance_vector *populate_dv_with_links()
 {
 	struct distance_vector *ret = NULL;
+	struct distance_vector *aux;
 	debug("populate_dv_with_links from table_handler.c is acquiring me.mutex");
 	pthread_mutex_lock(&me.mutex);
 
@@ -89,11 +90,14 @@ struct distance_vector *populate_dv_with_links()
 			new_item->next = NULL;
 
 			if (!ret)
+			{
 				ret = new_item;
+				aux = new_item;
+			}
 			else
 			{
-				ret->next = new_item;
-				ret		  = new_item;
+				aux->next = new_item;
+				aux		  = new_item;
 			}
 		}
 	pthread_mutex_unlock(&me.mutex);
@@ -185,7 +189,6 @@ struct table_item *populate_table_with_links()
 	for (neighbour = me.neighbouring_routers; neighbour; neighbour = neighbour->next)
 		if (neighbour->enabled)
 		{
-			debug("adding neighbour %d", neighbour->id);
 			struct table_item *new_item = malloc(sizeof(struct table_item));
 			new_item->destination = neighbour->id;
 			new_item->next_hop = neighbour->id;
@@ -203,8 +206,6 @@ struct table_item *populate_table_with_links()
 				aux		  = new_item;
 			}
 		}
-		else
-			debug("neighbour %d is inactive", neighbour->id);
 	debug("populate_table_with_links from table_handler.c is releasing me.mutex");
 	pthread_mutex_unlock(&me.mutex);
 	return ret;
