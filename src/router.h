@@ -45,6 +45,7 @@ struct router {
 	int					 file_descriptor;
 
 	pthread_mutex_t		 mutex;
+	pthread_mutex_t		 terminal_mutex;
 };
 
 struct router me;

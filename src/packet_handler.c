@@ -19,7 +19,7 @@ void *packet_handler_f(void *arg)
 	while (true)
 	{
 		printf("aq\n");
-		union packet* p = dequeue(&me.input);
+		struct packet* p = dequeue(&me.input);
 		printf("aq2\n");
 		deserialize_header(p);
 

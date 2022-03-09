@@ -12,11 +12,14 @@ typedef int cost;
 
 // ------ forward decls -------
 struct link {
-	router_id		   id;
-	cost			   cost_to;
-	bool			   enabled;
-	struct sockaddr_in socket;
-	struct link		  *next;
+	router_id			id;
+	cost				cost_to;
+	bool				enabled;
+	time_t				last_heard_from;
+	struct in_addr		ip_address; // this may not be useful?
+	struct sockaddr_in	socket;
+	struct link		   *next;
+	struct distance_vector *last_dv;
 };
 
 struct router {
@@ -26,11 +29,13 @@ struct router {
 	struct packet_queue  input;
 	struct packet_queue  output;
 
-	struct table		*table;
-
 	struct link			*neighbouring_routers;
 
+	struct in_addr		 ip_address; // this may not be useful?
 	struct sockaddr_in	*udp_socket;
+	int					 file_descriptor;
+
+	pthread_mutex_t		 mutex;
 };
 
 struct router me;
@@ -49,7 +54,7 @@ void free_distance_vector(struct distance_vector *dv)
 // returns a null-terminated string with at most 100 bytes
 // and destroys the packet object passed as argument if
 // `destroy` is true.
-char *serialize(union packet *packet, bool destroy)
+char *serialize(struct packet *packet, bool destroy)
 {
 	char *serialized_packet = calloc(PAYLOAD_MAX_LENGTH, sizeof(char));
 
@@ -73,18 +78,25 @@ char *serialize(union packet *packet, bool destroy)
 			{
 				int prior_index = index;
 				index += sprintf(&serialized_packet[index], "%d %d\n", dv->virtual_address, dv->distance);
+				debug("index = %d, src = %d, dist = %d", index, dv->virtual_address, dv->distance);
 				dv = dv->next;
 
 				// if the content is bigger than 98 chars, we
 				// simply ignore the rest of it.
+				// in a real impl we would have to split the
+				// content into multiple packets.
 				if (index >= PAYLOAD_MAX_LENGTH - 2)
 				{
+					debug("breaking at %d", index);
 					serialized_packet[prior_index] = '\0';
 					break;
 				}
 			}
 
-			free_distance_vector(packet->deserialized.payload.distance);
+			debug("final str is %s", &serialized_packet);
+
+			if (destroy)
+				free_distance_vector(packet->deserialized.payload.distance);
 			break;
 
 		case DATA:
@@ -109,17 +121,18 @@ char *serialize(union packet *packet, bool destroy)
 
 	if (destroy)
 		free(packet);
+	debug("serializedpacket:\n%s", serialized_packet);
 	return serialized_packet;
 }
 
-void deserialize_header(union packet *packet)
+void deserialize_header(struct packet *packet)
 {
 	packet->deserialized.type = packet->serialized[0] == 'c'? CONTROL: DATA;
 
 	sscanf(&packet->serialized[1], "%d %d", &packet->deserialized.source, &packet->deserialized.destination);
 }
 
-void deserialize_payload(union packet *packet)
+void deserialize_payload(struct packet *packet)
 {
 	int index = packet->deserialized.index;
 	switch (packet->deserialized.type)
@@ -181,7 +194,7 @@ void enqueue_to_input(char *serialized_packet)
 	sem_post(&me.input.semaphore);
 }
 
-void enqueue_to_output(union packet *packet)
+void enqueue_to_output(struct packet *packet)
 {
 	debug("enqueue_to_output from packet.c is acquiring me.input.mutex");
 	pthread_mutex_lock(&me.output.mutex);
@@ -221,7 +234,7 @@ void enqueue_to_output(union packet *packet)
 
 #include <errno.h>
 
-union packet *dequeue(struct packet_queue *queue)
+struct packet *dequeue(struct packet_queue *queue)
 {
 	sem_wait(&queue->semaphore);
 
@@ -229,6 +242,7 @@ union packet *dequeue(struct packet_queue *queue)
 	pthread_mutex_lock(&queue->mutex);
 	queue->current_size--;
 
+	// @TODO this isnt aqueue rofl
 	struct queue_item *qi = queue->head;
 	if (!qi || queue->current_size < 0)
 		die("tentativa de dequeue em fila vazia");
@@ -240,8 +254,9 @@ union packet *dequeue(struct packet_queue *queue)
 			qi = qi->next;
 		}
 
-	union packet *ret = qi->packet;
+	struct packet *ret = qi->packet;
 	free(qi);
 	pthread_mutex_unlock(&queue->mutex);
+	assert(ret);
 	return ret;
 }

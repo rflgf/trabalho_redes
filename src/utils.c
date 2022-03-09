@@ -206,6 +206,8 @@ int parse_router_config(char *filename, router_id virtual_address)
 
 int parse_link_config(char *filename, router_id my_virtual_address)
 {
+	me.neighbouring_routers = NULL;
+
 	FILE *desc = fopen(filename, "r");
 
 	if (!desc)
@@ -239,11 +241,11 @@ void add_link(router_id neighbour_id, cost cost)
 {
 	struct link *new_neighbour = malloc(sizeof(struct link));
 
-	new_neighbour->enabled = false;
+	// we keep it false until we know for sure it's being used.
+	new_neighbour->enabled = true;
 	new_neighbour->cost_to = cost;
 	new_neighbour->next	   = NULL;
 
-	// we keep it false until we know for sure it's being used.
 	new_neighbour->id = neighbour_id;
 
 	if (!me.neighbouring_routers)

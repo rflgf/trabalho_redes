@@ -37,13 +37,13 @@ struct deserialized {
 	union payload		payload;
 };
 
-union packet {
+struct packet {
 	char *serialized;
 	struct deserialized deserialized;
 };
 
 struct queue_item {
-	union packet	  *packet;
+	struct packet	  *packet;
 	struct queue_item *next;
 };
 
@@ -57,27 +57,27 @@ struct packet_queue {
 // returns a null-terminated string with at most 100 bytes
 // and destroys the packet object passed as argument if
 // `destroy` is true.
-char *serialize(union packet *packet, bool destroy);
+char *serialize(struct packet *packet, bool destroy);
 
 // does not destroy anything.
-void deserialize_header(union packet *serialized_packet);
+void deserialize_header(struct packet *serialized_packet);
 
 // meant to be used on the product of a `deserialize_header` call.
-void deserialize_payload(union packet *packet);
+void deserialize_payload(struct packet *packet);
 
 // append packet to the start of the output queue
-void enqueue_to_output(union packet *packet);
+void enqueue_to_output(struct packet *packet);
 
 // append packet to the start of the input queue
 void enqueue_to_input(char *serialized_packet);
 
 #define enqueue(X) _Generic((X),	   \
-	union packet *: enqueue_to_output, \
+	struct packet *: enqueue_to_output, \
 			char *: enqueue_to_input   \
 )(X)
 
 // removes the last packet out of the queue
-union packet *dequeue(struct packet_queue *queue);
+struct packet *dequeue(struct packet_queue *queue);
 
 void free_distance_vector(struct distance_vector *dv);
 

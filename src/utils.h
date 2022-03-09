@@ -7,9 +7,11 @@
 #include <stddef.h>
 
 #ifdef DEBUG
+#include <assert.h>
 void debug(const char *format, ...);
 #else
 #define debug(...) (void)0 /* no-op */
+#define assert(...) (void)0 /* no-op */
 #endif
 
 // errors

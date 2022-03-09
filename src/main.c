@@ -28,10 +28,6 @@ int main(int argc, char **argv)
 	if (parse_args(argc, argv))
 		return -1;
 
-	// initializing semaphore stuff.
-	sem_init(&me.input.semaphore, 0, 0);	// at most MAX_QUEUE_ITEMS.
-	sem_init(&me.output.semaphore, 0, 0);
-
 	int error_check;
 
 	// main thread will handle the terminal stuff.
@@ -48,6 +44,7 @@ int main(int argc, char **argv)
 
 	while (run)
 	{
+		pthread_mutex_lock(&me.terminal_mutex);
 		printf("ID: %d\n", me.id);
 		printf("escolha alguma das opções:\n");
 		printf("\t0 - sair\n");
@@ -91,7 +88,7 @@ int main(int argc, char **argv)
 					continue;
 				}
 
-				union packet *p = malloc(sizeof(union packet));
+				struct packet *p = malloc(sizeof(struct packet));
 				p->deserialized.type = DATA;
 				p->deserialized.source = me.id;
 				p->deserialized.destination = destination;
@@ -132,6 +129,7 @@ int main(int argc, char **argv)
 				printf("opção inválida\n");
 				continue;
 		}
+		pthread_mutex_unlock(&me.terminal_mutex);
 	}
 
 	// joins

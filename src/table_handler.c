@@ -31,7 +31,7 @@ void *table_handler_f(void *arg)
 
 			if (neighbour->enabled)
 			{
-				union packet *p = malloc(sizeof(union packet));
+				struct packet *p = malloc(sizeof(struct packet));
 				p->deserialized.type = CONTROL;
 				p->deserialized.source = me.id;
 				p->deserialized.payload.distance = dv;
@@ -100,11 +100,11 @@ struct distance_vector *populate_dv_with_links()
 	return ret;
 }
 
-struct distance_vector *get_dv_by_destination(router_id destination, struct distance_vector *dv_start)
+struct distance_vector *get_dv_by_destination(router_id destination, struct distance_vector *table)
 {
-	for (; dv_start; dv_start = dv_start->next)
-		if (dv_start->virtual_address == destination)
-			return dv_start;
+	for (; table; table = table->next)
+		if (table->virtual_address == destination)
+			return table;
 	return NULL;
 }
 
@@ -178,13 +178,14 @@ void remove_link(struct link *neighbour)
 struct table_item *populate_table_with_links()
 {
 	struct table_item *ret = NULL;
-	debug("populate_table_with_links from table_handler.c is acquiring me.mutex");
+	struct table_item *aux;
 	pthread_mutex_lock(&me.mutex);
 
 	struct link *neighbour;
 	for (neighbour = me.neighbouring_routers; neighbour; neighbour = neighbour->next)
 		if (neighbour->enabled)
 		{
+			debug("adding neighbour %d", neighbour->id);
 			struct table_item *new_item = malloc(sizeof(struct table_item));
 			new_item->destination = neighbour->id;
 			new_item->next_hop = neighbour->id;
@@ -192,13 +193,18 @@ struct table_item *populate_table_with_links()
 			new_item->next = NULL;
 
 			if (!ret)
+			{
 				ret = new_item;
+				aux = new_item;
+			}
 			else
 			{
-				ret->next = new_item;
-				ret		  = new_item;
+				aux->next = new_item;
+				aux		  = new_item;
 			}
 		}
+		else
+			debug("neighbour %d is inactive", neighbour->id);
 	debug("populate_table_with_links from table_handler.c is releasing me.mutex");
 	pthread_mutex_unlock(&me.mutex);
 	return ret;
@@ -223,7 +229,6 @@ struct table_item *calculate_table()
 {
 	struct table_item *ret_table = populate_table_with_links();
 
-	debug("calculate_table from table_handler.c is acquiring me.mutex");
 	pthread_mutex_lock(&me.mutex);
 
 	struct link *neighbour;

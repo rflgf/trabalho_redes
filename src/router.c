@@ -33,7 +33,12 @@ void initialize_router(int id, int port, char *ip_address)
 
 	me.enabled = true;
 
+	// initializing semaphore stuff.
+	sem_init(&me.input.semaphore, 0, 0);	// at most MAX_QUEUE_ITEMS.
+	sem_init(&me.output.semaphore, 0, 0);
+
 	pthread_mutex_init(&me.mutex, NULL);
+	pthread_mutex_init(&me.terminal_mutex, NULL);
 	pthread_mutex_init(&me.input.mutex, NULL);
 	pthread_mutex_init(&me.output.mutex, NULL);
 }
