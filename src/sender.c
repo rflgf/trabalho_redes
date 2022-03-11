@@ -11,11 +11,22 @@ void *sender_f(void *arg)
 {
 	while (true)
 	{
+	debug("starting senderf");
 		struct table_item *table = calculate_table();
 		struct packet *p = dequeue(&me.output);
 		struct table_item *t = get_table_item_by_destination(p->deserialized.destination, table);
 		if (!t)
-			die("get_table_item_by_destination");
+		{
+			//info("impossível encontrar caminho para %d, descartando pacote #%d de %d para %d.",
+			info("impossível encontrar caminho para %d, descartando pacote de %d para %d.",
+				p->deserialized.destination,
+				//p->deserialized.id,
+				p->deserialized.source,
+				p->deserialized.destination);
+			//	die("get_table_item_by_destination");
+			continue;
+		}
+
 		router_id link = t->next_hop;
 
 		struct sockaddr_in socket = get_link_by_id(link)->socket;

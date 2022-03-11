@@ -6,6 +6,12 @@
 #include <stdlib.h>
 #include <stddef.h>
 
+#ifdef INFO
+void info(const char *format, ...);
+#else
+#define info(...) (void)0 /* no-op */
+#endif
+
 #ifdef DEBUG
 #include <assert.h>
 void debug(const char *format, ...);
@@ -23,8 +29,8 @@ void debug(const char *format, ...);
 #define SOCKET_ERR_PORT				   5
 
 int MAX_QUEUE_ITEMS;
-time_t SLEEP_TIME;
-time_t CONNECTION_TIMEOUT;
+int SLEEP_TIME;
+int CONNECTION_TIMEOUT;
 
 typedef int router_id;
 typedef int cost;

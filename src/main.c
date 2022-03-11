@@ -44,17 +44,15 @@ int main(int argc, char **argv)
 
 	while (run)
 	{
-		pthread_mutex_lock(&me.terminal_mutex);
+		printf("---------------------------------------\n");
 		printf("ID: %d\n", me.id);
 		printf("escolha alguma das opções:\n");
 		printf("\t0 - sair\n");
 		printf("\t1 - enviar mensagem\n");
-		pthread_mutex_lock(&me.mutex);
 		if (me.enabled)
 			printf("\t2 - desligar roteador\n");
 		else
 			printf("\t2 - ligar roteador\n");
-		pthread_mutex_unlock(&me.mutex);
 		printf("\t3 - ver enlaces do roteador\n");
 
 		enum menu_options input;
@@ -77,7 +75,7 @@ int main(int argc, char **argv)
 				printf("mensagem: ");
 				scanf("%100s", message);
 				fflush(stdin);
-				printf("---------------------------------------\n");
+				printf("\n---------------------------------------\n");
 
 				if (destination == me.id)
 				{
@@ -113,7 +111,7 @@ int main(int argc, char **argv)
 			case LIST_LINKS:
 				printf("---------- lista de enlaces -----------\n");
 				printf("\tid\tcusto/dist\thabilitado\n");
-				pthread_mutex_lock(&me.mutex);
+				//pthread_mutex_lock(&me.mutex);
 				printf("a\n");
 				struct link *l;
 				for (l = me.neighbouring_routers; l; l = l->next)
@@ -121,7 +119,7 @@ int main(int argc, char **argv)
 						l->id,
 						l->cost_to,
 						l->enabled? "\033[0;32mV\033[0m": "\033[0;31m-\033[0m");
-				pthread_mutex_unlock(&me.mutex);
+				//pthread_mutex_unlock(&me.mutex);
 				printf("---------------------------------------\n");
 				break;
 
@@ -129,7 +127,6 @@ int main(int argc, char **argv)
 				printf("opção inválida\n");
 				continue;
 		}
-		pthread_mutex_unlock(&me.terminal_mutex);
 	}
 
 	// joins

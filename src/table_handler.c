@@ -23,9 +23,7 @@ void *table_handler_f(void *arg)
 		for (neighbour = me.neighbouring_routers; neighbour; neighbour = neighbour->next)
 			if (neighbour->enabled)
 			{
-				neighbour->last_heard_from = current_time;
-
-				if (neighbour->last_heard_from + CONNECTION_TIMEOUT > current_time)
+				if (current_time - neighbour->last_heard_from > CONNECTION_TIMEOUT)
 				{
 					printf("conexão com %d alcançou o tempo limite de espera,\ndesconectando removendo enlace...\n", neighbour->id);
 					free_distance_vector(neighbour->last_dv);

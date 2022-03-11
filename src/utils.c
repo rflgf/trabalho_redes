@@ -11,15 +11,31 @@
 #include "router.h"
 #include "table_handler.h"
 
+#ifdef INFO
+void info(const char *format, ...)
+{
+	pthread_mutex_lock(&me.terminal_mutex);
+	printf("\033[0;32m[ info  ] \033[0m"); //
+    va_list args;
+    va_start(args, format);
+    vfprintf(stdout, format, args);
+    va_end(args);
+    printf("\n");
+	pthread_mutex_unlock(&me.terminal_mutex);
+}
+#endif
+
 #ifdef DEBUG
 void debug(const char *format, ...)
 {
+	pthread_mutex_lock(&me.terminal_mutex);
     printf("\033[0;36m[ debug ] \033[0m"); // cyan
     va_list args;
     va_start(args, format);
     vfprintf(stdout, format, args);
     va_end(args);
     printf("\n");
+	pthread_mutex_unlock(&me.terminal_mutex);
 }
 #endif
 
@@ -27,8 +43,8 @@ typedef int cost;
 
 char router_filename[100] = "roteador.config";
 char link_filename[100]   = "enlaces.config";
-time_t CONNECTION_TIMEOUT = 6;					// in seconds
-time_t SLEEP_TIME		  = 2;					// in seconds
+int CONNECTION_TIMEOUT    = 6;					// in seconds
+int SLEEP_TIME			  = 2;					// in seconds
 int MAX_QUEUE_ITEMS		  = 6;
 
 void die(const char *format, ...)
@@ -167,9 +183,10 @@ int parse_router_config(char *filename, router_id virtual_address)
 
 	while (fgets(line, sizeof(line), desc))
 	{
-		int id, port;
+		int id;
+		unsigned int port;
 		char ip_address[INET_ADDRSTRLEN]; // IPv4 only
-		sscanf(line, "%d %d %s", &id, &port, &ip_address[0]);
+		sscanf(line, "%d %u %s", &id, &port, &ip_address[0]);
 
 		if (id != virtual_address)
 		{
@@ -245,6 +262,7 @@ void add_link(router_id neighbour_id, cost cost)
 	new_neighbour->enabled = true;
 	new_neighbour->cost_to = cost;
 	new_neighbour->next	   = NULL;
+	new_neighbour->last_heard_from = time(NULL);
 
 	new_neighbour->id = neighbour_id;
 
