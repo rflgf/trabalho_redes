@@ -9,7 +9,7 @@
 #include "router.h"
 #include "utils.h"
 
-void initialize_router(int id, int port, char *ip_address)
+void initialize_router(int id, unsigned short int port, char *ip_address)
 {
 	me.udp_socket = calloc(1, sizeof(struct sockaddr_in));
 	me.file_descriptor = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -25,8 +25,10 @@ void initialize_router(int id, int port, char *ip_address)
 		die("inet_aton");
 
     // bind socket to port
-    if (!bind(me.file_descriptor, (struct sockaddr*) me.udp_socket, sizeof(me.udp_socket)))
-        die("erro ao fazer o bind.");
+	int err = bind(me.file_descriptor, (struct sockaddr*) me.udp_socket, sizeof(struct sockaddr_in));
+    if (err)
+    //if (!bind(me.file_descriptor, (struct sockaddr*) me.udp_socket, sizeof(me.udp_socket)))
+        die("erro ao fazer o bind: %d", err);
 
 	me.enabled = true;
 

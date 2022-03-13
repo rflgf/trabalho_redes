@@ -9,9 +9,9 @@
 
 typedef int router_id;
 
-enum packet_type {
-	CONTROL,
-	DATA
+enum __attribute__((packed)) packet_type {
+	CONTROL = 'c',
+	DATA	= 'd'
 };
 
 struct distance_vector {
@@ -71,9 +71,9 @@ void enqueue_to_output(struct packet *packet);
 // append packet to the start of the input queue
 void enqueue_to_input(char *serialized_packet);
 
-#define enqueue(X) _Generic((X),	   \
+#define enqueue(X) _Generic((X),		\
 	struct packet *: enqueue_to_output, \
-			char *: enqueue_to_input   \
+			 char *: enqueue_to_input   \
 )(X)
 
 // removes the last packet out of the queue

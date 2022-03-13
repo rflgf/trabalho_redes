@@ -184,9 +184,9 @@ int parse_router_config(char *filename, router_id virtual_address)
 	while (fgets(line, sizeof(line), desc))
 	{
 		int id;
-		unsigned int port;
+		unsigned short int port;
 		char ip_address[INET_ADDRSTRLEN]; // IPv4 only
-		sscanf(line, "%d %u %s", &id, &port, &ip_address[0]);
+		sscanf(line, "%d %hu %s", &id, &port, &ip_address[0]);
 
 		if (id != virtual_address)
 		{

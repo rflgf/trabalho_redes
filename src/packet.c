@@ -64,21 +64,20 @@ char *serialize(struct packet *packet, bool destroy)
 		case CONTROL:
 			/*
 				formatting as follows
-				c source_virtual_addr destination_virtual_addr
-				a_virtual_addr a_cost
+				csource_virtual_addr
 				b_virtual_addr b_cost
 				c_virtual_addr c_cost
 				...
 			*/
-			serialized_packet[0] = 'c';
+			serialized_packet[0] = CONTROL;
 
-			// payload can't take up the last or first few chars of the packet.
 			int index = 1;
+			index += sprintf(&serialized_packet[index], "%d\n", me.id);
 			struct distance_vector *dv = packet->deserialized.payload.distance;
 			while (dv)
 			{
 				int prior_index = index;
-				index += sprintf(&serialized_packet[index], "%d %d ", dv->virtual_address, dv->distance);
+				index += sprintf(&serialized_packet[index], "%d %d\n", dv->virtual_address, dv->distance);
 				dv = dv->next;
 
 				// if the content is bigger than 98 chars, we
@@ -100,14 +99,14 @@ char *serialize(struct packet *packet, bool destroy)
 		case DATA:
 			/*
 				formatting as follows
-				d source_virtual_addr destination_virtual_addr
+				dsource_virtual_addr destination_virtual_addr
 				a_virtual_addr a_cost
 				b_virtual_addr b_cost
 				c_virtual_addr c_cost
 				...
 			*/
 
-			serialized_packet[0] = 'd';
+			serialized_packet[0] = DATA;
 
 			// payload can't take up the last and first char of the packet.
 			memcpy(&serialized_packet[1], packet->deserialized.payload.message, PAYLOAD_MAX_LENGTH - 1);
@@ -126,9 +125,20 @@ char *serialize(struct packet *packet, bool destroy)
 
 void deserialize_header(struct packet *packet)
 {
-	packet->deserialized.type = packet->serialized[0] == 'c'? CONTROL: DATA;
+	packet->deserialized.type = packet->serialized[0];
+	packet->deserialized.index = 1;
+	switch(packet->deserialized.type)
+	{
+		case CONTROL:
+			packet->deserialized.destination = me.id;
+			packet->deserialized.index += sscanf(&packet->serialized[1], "%d\n", &packet->deserialized.source);
+			break;
 
-	sscanf(&packet->serialized[1], "%d %d", &packet->deserialized.source, &packet->deserialized.destination);
+		case DATA:
+			packet->deserialized.index += sscanf(&packet->serialized[1], "%d %d\n", &packet->deserialized.source, &packet->deserialized.destination);
+			break;
+	}
+
 }
 
 void deserialize_payload(struct packet *packet)
@@ -137,39 +147,39 @@ void deserialize_payload(struct packet *packet)
 	switch (packet->deserialized.type)
 	{
 		case CONTROL:
-
 			while (index < PAYLOAD_MAX_LENGTH - 1)
 			{
 				if (packet->serialized[index + 1] == '\0')
 					break;
 
 				struct distance_vector *dv = malloc(sizeof(struct distance_vector));
-				index += sscanf(&packet->serialized[index], "%d %d", &dv->virtual_address, &dv->distance);
+				index += sscanf(&packet->serialized[index], "%d %d\n", &dv->virtual_address, &dv->distance);
 
 				dv->next = NULL;
 			}
 			break;
 
-		default:
+		case DATA:
 			packet->deserialized.payload.message = &packet->serialized[1];
+			break;
 	}
 }
 
 void enqueue_to_input(char *serialized_packet)
 {
-	debug("enqueue_to_input from packet.c is acquiring me.input.mutex");
 	pthread_mutex_lock(&me.input.mutex);
 
 	if (me.input.current_size >= MAX_QUEUE_ITEMS)
 	{
-		printf("fila de input cheia, descartando pacote...\n");
+		printf("fila de input cheia, descartando pacote #...\n");
 		pthread_mutex_unlock(&me.input.mutex);
 		return;
 	}
 
-	if (!&me.input.head)
+	if (!me.input.head)
 	{
 		struct queue_item *new_head = malloc(sizeof(struct queue_item));
+		new_head->packet = calloc(1, sizeof(struct packet));
 		new_head->packet->serialized = serialized_packet;
 		new_head->next = NULL;
 		me.input.head = new_head;
@@ -178,13 +188,13 @@ void enqueue_to_input(char *serialized_packet)
 	else
 	{
 		struct queue_item *qi = me.input.head;
-
 		while (qi->next)
 			qi = qi->next;
 
 		struct queue_item *new = malloc(sizeof(struct queue_item));
 		new->next = NULL;
 		qi->next = new;
+		new->packet = malloc(sizeof(struct packet));
 		new->packet->serialized = serialized_packet;
 	}
 
@@ -195,7 +205,6 @@ void enqueue_to_input(char *serialized_packet)
 
 void enqueue_to_output(struct packet *packet)
 {
-	debug("enqueue_to_output from packet.c is acquiring me.input.mutex");
 	pthread_mutex_lock(&me.output.mutex);
 
 	if (me.output.current_size >= MAX_QUEUE_ITEMS)
@@ -228,7 +237,6 @@ void enqueue_to_output(struct packet *packet)
 
 	me.output.current_size++;
 
-	debug("enqueue_to_output from packet.c is releasing me.input.mutex");
 	pthread_mutex_unlock(&me.output.mutex);
 	sem_post(&me.output.semaphore);
 }
@@ -237,7 +245,6 @@ struct packet *dequeue(struct packet_queue *queue)
 {
 	sem_wait(&queue->semaphore);
 
-	debug("dequeue from packet.c is acquiring me.input.mutex");
 	pthread_mutex_lock(&queue->mutex);
 
 	struct queue_item *qi = queue->head;
@@ -248,6 +255,8 @@ struct packet *dequeue(struct packet_queue *queue)
 	queue->current_size--;
 	struct packet *ret = qi->packet;
 	free(qi);
+	if (queue->current_size == 0)
+		queue->head = NULL;
 	pthread_mutex_unlock(&queue->mutex);
 	assert(ret);
 	return ret;

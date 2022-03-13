@@ -50,7 +50,7 @@ struct router {
 
 struct router me;
 
-void initialize_router(int id, int port, char *ip_address);
+void initialize_router(int id, unsigned short int port, char *ip_address);
 
 void create_socket();
 void destroy_socket();

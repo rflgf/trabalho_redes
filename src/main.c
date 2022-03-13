@@ -65,16 +65,18 @@ int main(int argc, char **argv)
 				break;
 
 			case SEND_MESSAGE:
-
+				pthread_mutex_lock(&me.terminal_mutex);
 				printf("------------- nova mensagem -----------\n");
 				router_id destination;
-				char message[PAYLOAD_MAX_LENGTH]; // @TODO tratar tamanho correto da mensagem.
+				char *message = calloc(1, PAYLOAD_MAX_LENGTH); // @TODO tratar tamanho correto da mensagem.
 				printf("para: ");
+				fflush(stdin);
 				scanf("%d", &destination);
+				printf("destination is %d\n", destination);
 
 				printf("mensagem: ");
-				scanf("%100s", message);
 				fflush(stdin);
+				scanf("%100s", message);
 				printf("\n---------------------------------------\n");
 
 				if (destination == me.id)
@@ -85,6 +87,8 @@ int main(int argc, char **argv)
 					printf("---------------------------------------\n");
 					continue;
 				}
+
+				pthread_mutex_unlock(&me.terminal_mutex);
 
 				struct packet *p = malloc(sizeof(struct packet));
 				p->deserialized.type = DATA;
@@ -99,7 +103,6 @@ int main(int argc, char **argv)
 				qi->packet = p;
 
 				enqueue(p);
-
 				break;
 
 			case SLEEP_OR_WAKE:
