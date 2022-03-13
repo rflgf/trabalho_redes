@@ -72,8 +72,6 @@ int main(int argc, char **argv)
 				printf("para: ");
 				fflush(stdin);
 				scanf("%d", &destination);
-				printf("destination is %d\n", destination);
-
 				printf("mensagem: ");
 				fflush(stdin);
 				scanf("%100s", message);

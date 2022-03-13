@@ -40,7 +40,6 @@ void *packet_handler_f(void *arg)
 					printf("mensagem de [%d] para [%d]:\n", p->deserialized.source, p->deserialized.destination);
 					printf("\t%s\n", message);
 
-					free(p->deserialized.payload.message);
 					break;
 			}
 					free(p->serialized);

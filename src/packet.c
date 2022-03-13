@@ -107,9 +107,11 @@ char *serialize(struct packet *packet, bool destroy)
 			*/
 
 			serialized_packet[0] = DATA;
+			index = 1;
+			index += sprintf(&serialized_packet[index], "%d %d\n", packet->deserialized.source, packet->deserialized.destination);
 
 			// payload can't take up the last and first char of the packet.
-			memcpy(&serialized_packet[1], packet->deserialized.payload.message, PAYLOAD_MAX_LENGTH - 1);
+			memcpy(&serialized_packet[index], &packet->deserialized.payload.message[0], strlen(packet->deserialized.payload.message) - index);
 			if (destroy)
 				free(packet->deserialized.payload.message);
 
@@ -209,10 +211,10 @@ void enqueue_to_output(struct packet *packet)
 
 	if (me.output.current_size >= MAX_QUEUE_ITEMS)
 	{
-		pthread_mutex_lock(&me.terminal_mutex);
-		printf("fila de output cheia, descartando pacote...\n");
-		pthread_mutex_unlock(&me.terminal_mutex);
 		pthread_mutex_unlock(&me.output.mutex);
+		pthread_mutex_lock(&me.terminal_mutex);
+		info("fila de saída cheia, descartando pacote #...");
+		pthread_mutex_unlock(&me.terminal_mutex);
 		return;
 	}
 
@@ -258,6 +260,6 @@ struct packet *dequeue(struct packet_queue *queue)
 	if (queue->current_size == 0)
 		queue->head = NULL;
 	pthread_mutex_unlock(&queue->mutex);
-	assert(ret);
+	//assert(ret);
 	return ret;
 }
