@@ -11,23 +11,23 @@ void *sender_f(void *arg)
 {
 	while (true)
 	{
-		struct table_item *table = calculate_table();
-		struct packet *p = dequeue(&me.output);
-		struct table_item *t = get_table_item_by_destination(p->deserialized.destination, table);
-		if (!t)
+		if (!me.enabled)
 		{
-			//info("impossível encontrar caminho para %d, descartando pacote #%d de %d para %d.",
-			info("impossível encontrar caminho para %d, descartando pacote de %d para %d.",
-				p->deserialized.destination,
-				//p->deserialized.id,
-				p->deserialized.source,
-				p->deserialized.destination);
+			pthread_mutex_lock(&me.mutex);
+			pthread_cond_wait(&me.sleep_cond_var, &me.mutex);
+		}
+
+		struct packet *p = dequeue(&me.output);
+		struct link *l = get_link_by_id(p->deserialized.next_hop);
+		if (!l)
+		{
+			char *packet_id = evaluate_packet_id(p);
+			info("enlace %d desabilitado, descartando pacote #%s de %d", p->deserialized.next_hop, packet_id, p->deserialized.source);
+			free(packet_id);
 			continue;
 		}
 
-		router_id link = t->next_hop;
-
-		struct sockaddr_in socket = get_link_by_id(link)->socket;
+		struct sockaddr_in socket = l->socket;
 
 		int error_check = sendto(me.file_descriptor, p->serialized, strlen(p->serialized), 0, (struct sockaddr *) &socket, sizeof(socket));
 
@@ -40,7 +40,6 @@ void *sender_f(void *arg)
 		// @TODO initialize these two as null so we can make a null check here and free them.
 
 		pthread_mutex_unlock(&me.output.mutex);
-		free_table(table);
 	}
 
 }

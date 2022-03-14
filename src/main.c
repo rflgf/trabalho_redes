@@ -36,16 +36,16 @@ int main(int argc, char **argv)
 			  packet_handler,
 			  table_handler;
 
-	pthread_create(&receiver, NULL, receiver_f, NULL);
-	pthread_create(&sender, NULL, sender_f, NULL);
+	pthread_create(&receiver,		NULL, receiver_f,		NULL);
+	pthread_create(&sender,			NULL, sender_f,			NULL);
 	pthread_create(&packet_handler, NULL, packet_handler_f, NULL);
-	pthread_create(&table_handler, NULL, table_handler_f, NULL);
+	pthread_create(&table_handler,	NULL, table_handler_f,	NULL);
 	bool run = true;
 
 	while (run)
 	{
 		printf("---------------------------------------\n");
-		printf("ID: %d\n", me.id);
+		printf("ID: %d %s\n", me.id, me.enabled? "(ativado)": "(desativado)");
 		printf("escolha alguma das opções:\n");
 		printf("\t0 - sair\n");
 		printf("\t1 - enviar mensagem\n");
@@ -54,6 +54,7 @@ int main(int argc, char **argv)
 		else
 			printf("\t2 - ligar roteador\n");
 		printf("\t3 - ver enlaces do roteador\n");
+		printf("---------------------------------------\n");
 
 		enum menu_options input;
 		scanf("%d", (int *) &input);
@@ -106,21 +107,19 @@ int main(int argc, char **argv)
 			case SLEEP_OR_WAKE:
 				pthread_mutex_lock(&me.mutex);
 				me.enabled = !me.enabled;
+				pthread_cond_broadcast(&me.sleep_cond_var);
 				pthread_mutex_unlock(&me.mutex);
 				break;
 
 			case LIST_LINKS:
 				printf("---------- lista de enlaces -----------\n");
-				printf("\tid\tcusto/dist\thabilitado\n");
-				//pthread_mutex_lock(&me.mutex);
-				printf("a\n");
+				printf("id\tcusto/dist\thabilitado\n");
 				struct link *l;
 				for (l = me.neighbouring_routers; l; l = l->next)
-					printf("\t%d\t%d\t\t%s\n",
+					printf("%d\t%d\t\t%s\n",
 						l->id,
 						l->cost_to,
 						l->enabled? "\033[0;32mV\033[0m": "\033[0;31m-\033[0m");
-				//pthread_mutex_unlock(&me.mutex);
 				printf("---------------------------------------\n");
 				break;
 

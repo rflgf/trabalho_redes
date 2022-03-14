@@ -10,6 +10,11 @@ void *receiver_f(void *data)
 {
 	while (true)
 	{
+		if (!me.enabled)
+		{
+			pthread_mutex_lock(&me.mutex);
+			pthread_cond_wait(&me.sleep_cond_var, &me.mutex);
+		}
 		char *buffer = calloc(PAYLOAD_MAX_LENGTH, sizeof(char));
 
 		int error_check = recvfrom(me.file_descriptor, buffer, PAYLOAD_MAX_LENGTH, 0, NULL, NULL);

@@ -7,6 +7,7 @@
 
 #define PAYLOAD_MAX_LENGTH 100
 
+typedef unsigned char packet_id;
 typedef int router_id;
 
 enum __attribute__((packed)) packet_type {
@@ -30,9 +31,11 @@ union payload {
 // router me`). maybe zero out or nullify `payload` so we don't
 // move garbage around, leading to UB or safety issues.
 struct deserialized {
+	packet_id			id;
 	enum packet_type	type;
 	router_id			source;
 	router_id			destination;
+	router_id			next_hop;
 	int					index;
 	union payload		payload;
 };
@@ -60,7 +63,7 @@ struct packet_queue {
 char *serialize(struct packet *packet, bool destroy);
 
 // does not destroy anything.
-void deserialize_header(struct packet *serialized_packet);
+int deserialize_header(struct packet *serialized_packet);
 
 // meant to be used on the product of a `deserialize_header` call.
 void deserialize_payload(struct packet *packet);
@@ -78,6 +81,8 @@ void enqueue_to_input(char *serialized_packet);
 
 // removes the last packet out of the queue
 struct packet *dequeue(struct packet_queue *queue);
+
+char *evaluate_packet_id(struct packet *packet);
 
 void free_distance_vector(struct distance_vector *dv);
 

@@ -13,18 +13,31 @@ void *table_handler_f(void *arg)
 
 	while (true)
 	{
+		if (!me.enabled)
+		{
+			debug("table_handler_f bloqueou");
+			pthread_mutex_lock(&me.mutex);
+			pthread_cond_wait(&me.sleep_cond_var, &me.mutex);
+			debug("table_handler_f desbloqueou");
+			pthread_mutex_lock(&me.mutex);
+			struct link *neighbour;
+			for (neighbour = me.neighbouring_routers; neighbour; neighbour = neighbour->next)
+				neighbour->enabled = true;
+			pthread_mutex_unlock(&me.mutex);
+		}
 		struct table_item *table = calculate_table();
 		struct distance_vector *dv = calculate_distance_vector(table);
 		time_t current_time = time(NULL);
 
 		pthread_mutex_lock(&me.mutex);
+		// enviar VD para todos os vizinhos ativos.
 		struct link *neighbour;
 		for (neighbour = me.neighbouring_routers; neighbour; neighbour = neighbour->next)
 			if (neighbour->enabled)
 			{
 				if (current_time - neighbour->last_heard_from > CONNECTION_TIMEOUT)
 				{
-					printf("conexão com %d alcançou o tempo limite de espera,\ndesconectando removendo enlace...\n", neighbour->id);
+					info("conexão com %d alcançou o\ntempo limite de espera, desconectando\nenlace.", neighbour->id);
 					free_distance_vector(neighbour->last_dv);
 					neighbour->enabled = false;
 				}
@@ -34,6 +47,7 @@ void *table_handler_f(void *arg)
 				p->deserialized.source = me.id;
 				p->deserialized.payload.distance = dv;
 				p->deserialized.destination = neighbour->id;
+				p->deserialized.next_hop = neighbour->id;
 				p->deserialized.index = 0;
 				serialize(p, false);
 				enqueue(p);

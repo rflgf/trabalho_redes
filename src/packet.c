@@ -6,41 +6,8 @@
 
 #include "utils.h"
 #include "packet.h"
+#include "table_handler.h"
 
-typedef int router_id;
-typedef int cost;
-
-// ------ forward decls -------
-struct link {
-	router_id			id;
-	cost				cost_to;
-	bool				enabled;
-	time_t				last_heard_from;
-	struct in_addr		ip_address; // this may not be useful?
-	struct sockaddr_in	socket;
-	struct link		   *next;
-	struct distance_vector *last_dv;
-};
-
-struct router {
-	router_id id;
-	bool	  enabled;
-
-	struct packet_queue  input;
-	struct packet_queue  output;
-
-	struct link			*neighbouring_routers;
-
-	struct in_addr		 ip_address; // this may not be useful?
-	struct sockaddr_in	*udp_socket;
-	int					 file_descriptor;
-
-	pthread_mutex_t		 mutex;
-	pthread_mutex_t		 terminal_mutex;
-};
-
-struct router me;
-// ---- end forward decls -----
 
 void free_distance_vector(struct distance_vector *dv)
 {
@@ -59,20 +26,25 @@ char *serialize(struct packet *packet, bool destroy)
 {
 	char *serialized_packet = calloc(PAYLOAD_MAX_LENGTH, sizeof(char));
 
+	pthread_mutex_lock(&me.packet_counter_mutex);
+	serialized_packet[0] = me.packet_counter++;
+	pthread_mutex_unlock(&me.packet_counter_mutex);
+
 	switch (packet->deserialized.type)
 	{
 		case CONTROL:
 			/*
 				formatting as follows
-				csource_virtual_addr
+				<packet_id>csource_virtual_addr
 				b_virtual_addr b_cost
 				c_virtual_addr c_cost
 				...
 			*/
-			serialized_packet[0] = CONTROL;
+			serialized_packet[1] = CONTROL;
 
-			int index = 1;
+			int index = 2;
 			index += sprintf(&serialized_packet[index], "%d\n", me.id);
+
 			struct distance_vector *dv = packet->deserialized.payload.distance;
 			while (dv)
 			{
@@ -99,15 +71,15 @@ char *serialize(struct packet *packet, bool destroy)
 		case DATA:
 			/*
 				formatting as follows
-				dsource_virtual_addr destination_virtual_addr
+				<packet_id>dsource_virtual_addr destination_virtual_addr
 				a_virtual_addr a_cost
 				b_virtual_addr b_cost
 				c_virtual_addr c_cost
 				...
 			*/
 
-			serialized_packet[0] = DATA;
-			index = 1;
+			serialized_packet[1] = DATA;
+			index = 2;
 			index += sprintf(&serialized_packet[index], "%d %d\n", packet->deserialized.source, packet->deserialized.destination);
 
 			// payload can't take up the last and first char of the packet.
@@ -125,22 +97,51 @@ char *serialize(struct packet *packet, bool destroy)
 	return serialized_packet;
 }
 
-void deserialize_header(struct packet *packet)
+int deserialize_header(struct packet *packet)
 {
-	packet->deserialized.type = packet->serialized[0];
-	packet->deserialized.index = 1;
+	packet->deserialized.id		= packet->serialized[0];
+	packet->deserialized.type	= packet->serialized[1];
+	packet->deserialized.index	= 2;
 	switch(packet->deserialized.type)
 	{
 		case CONTROL:
-			packet->deserialized.destination = me.id;
-			packet->deserialized.index += sscanf(&packet->serialized[1], "%d\n", &packet->deserialized.source);
+			packet->deserialized.destination = me.id; // control messages are only shared between neighbours.
+			packet->deserialized.index += sscanf(&packet->serialized[2], "%d\n", &packet->deserialized.source);
 			break;
 
 		case DATA:
-			packet->deserialized.index += sscanf(&packet->serialized[1], "%d %d\n", &packet->deserialized.source, &packet->deserialized.destination);
+			packet->deserialized.index += sscanf(&packet->serialized[2], "%d %d\n", &packet->deserialized.source, &packet->deserialized.destination);
 			break;
 	}
 
+	if (packet->deserialized.destination != me.id)
+	{
+		struct table_item *table = calculate_table();
+		struct table_item *t = get_table_item_by_destination(packet->deserialized.destination, table);
+		char *packet_id = evaluate_packet_id(packet);
+		if (!t)
+		{
+			info("impossível encontrar caminho\npara %d, descartando pacote #%s\nde %d para %d.",
+				packet->deserialized.destination,
+				packet_id,
+				packet->deserialized.source,
+				packet->deserialized.destination);
+			free(packet_id);
+			free(packet->serialized);
+			free(packet);
+			free(t);
+			free_table(table);
+			return -1;
+		}
+		packet->deserialized.next_hop = t->next_hop;
+		debug("calculei next hop para pacote #%s de %d para %d como %d",
+			packet_id,
+			packet->deserialized.source,
+			packet->deserialized.destination,
+			packet->deserialized.next_hop);
+		free(packet_id);
+	}
+	return 0;
 }
 
 void deserialize_payload(struct packet *packet)
@@ -173,7 +174,14 @@ void enqueue_to_input(char *serialized_packet)
 
 	if (me.input.current_size >= MAX_QUEUE_ITEMS)
 	{
-		printf("fila de input cheia, descartando pacote #...\n");
+		#ifdef INFO
+		struct packet p;
+		p.serialized = serialized_packet;
+		deserialize_header(&p);
+		char *packet_id = evaluate_packet_id(&p);
+		info("fila de entrada cheia, descartando pacote #%s de %d", packet_id, p.deserialized.source);
+		free(packet_id);
+		#endif
 		pthread_mutex_unlock(&me.input.mutex);
 		return;
 	}
@@ -212,9 +220,9 @@ void enqueue_to_output(struct packet *packet)
 	if (me.output.current_size >= MAX_QUEUE_ITEMS)
 	{
 		pthread_mutex_unlock(&me.output.mutex);
-		pthread_mutex_lock(&me.terminal_mutex);
-		info("fila de saída cheia, descartando pacote #...");
-		pthread_mutex_unlock(&me.terminal_mutex);
+		char *packet_id = evaluate_packet_id(packet);
+		info("fila de saída cheia, descartando pacote #%s de %d", packet_id, packet->deserialized.source);
+		free(packet_id);
 		return;
 	}
 
@@ -262,4 +270,11 @@ struct packet *dequeue(struct packet_queue *queue)
 	pthread_mutex_unlock(&queue->mutex);
 	//assert(ret);
 	return ret;
+}
+
+char *evaluate_packet_id(struct packet *packet)
+{
+	char *buff = malloc(20); // lol
+	sprintf(buff, "%u-%d", packet->deserialized.id, packet->deserialized.source);
+	return buff;
 }

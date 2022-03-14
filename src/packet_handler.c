@@ -9,20 +9,21 @@
 
 void *packet_handler_f(void *arg)
 {
-	// unlocks on input queue > 0
-	// deserializes data and
-	// - if im the destination
-	// - - if control, do the control thing
-	// - - if message, print out to the terminal
-	// - else put it in the output queue
-
 	while (true)
 	{
+		if (!me.enabled)
+		{
+			pthread_mutex_lock(&me.mutex);
+			pthread_cond_wait(&me.sleep_cond_var, &me.mutex);
+		}
 		struct packet* p = dequeue(&me.input);
 		deserialize_header(p);
 
 		if (p->deserialized.destination == me.id)
 		{
+			char *packet_id = evaluate_packet_id(p);
+			info("recebido pacote #%s de %d.", packet_id, p->deserialized.source);
+			free(packet_id);
 			switch (p->deserialized.type)
 			{
 				case CONTROL:
@@ -32,23 +33,27 @@ void *packet_handler_f(void *arg)
 					evaluate_distance_vector(p->deserialized.source, p->deserialized.payload.distance);
 					break;
 
-
 				case DATA:
 					deserialize_payload(p);
 					char *message = p->deserialized.payload.message;
 
-					printf("mensagem de [%d] para [%d]:\n", p->deserialized.source, p->deserialized.destination);
+					printf("---------- mensagem recebida ----------\n");
+					printf("de: %d\npara:%d\n", p->deserialized.source, p->deserialized.destination);
 					printf("\t%s\n", message);
-
+					printf("---------------------------------------\n");
 					break;
 			}
-					free(p->serialized);
-					free(p);
-
+			free(p->serialized);
+			free(p);
 		}
 
 		else
+		{
+			char *packet_id = evaluate_packet_id(p);
+			info("repassando pacote #%s de %d.", packet_id, p->deserialized.source);
+			free(packet_id);
 			enqueue(p);
+		}
 	}
 }
 

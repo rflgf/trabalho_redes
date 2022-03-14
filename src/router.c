@@ -11,6 +11,9 @@
 
 void initialize_router(int id, unsigned short int port, char *ip_address)
 {
+	if (pthread_cond_init(&me.sleep_cond_var, NULL) != 0)
+		die("pthread_cond_init");
+
 	me.udp_socket = calloc(1, sizeof(struct sockaddr_in));
 	me.file_descriptor = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
@@ -40,6 +43,9 @@ void initialize_router(int id, unsigned short int port, char *ip_address)
 	pthread_mutex_init(&me.terminal_mutex, NULL);
 	pthread_mutex_init(&me.input.mutex, NULL);
 	pthread_mutex_init(&me.output.mutex, NULL);
+	pthread_mutex_init(&me.packet_counter_mutex, NULL);
+
+	me.packet_counter = 0;
 }
 
 void destruct_socket();

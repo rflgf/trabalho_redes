@@ -37,6 +37,8 @@ struct router {
 
 	struct packet_queue  input;
 	struct packet_queue  output;
+	packet_id			 packet_counter;
+	pthread_mutex_t		 packet_counter_mutex;
 
 	struct link			*neighbouring_routers;
 
@@ -46,6 +48,7 @@ struct router {
 
 	pthread_mutex_t		 mutex;
 	pthread_mutex_t		 terminal_mutex;
+	pthread_cond_t		 sleep_cond_var;
 };
 
 struct router me;
