@@ -46,11 +46,10 @@ char *serialize(struct packet *packet, bool destroy)
 			index += sprintf(&serialized_packet[index], "%d\n", me.id);
 
 			struct distance_vector *dv = packet->deserialized.payload.distance;
-			while (dv)
+			for (dv = packet->deserialized.payload.distance; dv; dv = dv->next)
 			{
 				int prior_index = index;
 				index += sprintf(&serialized_packet[index], "%d %d\n", dv->virtual_address, dv->distance);
-				dv = dv->next;
 
 				// if the content is bigger than 98 chars, we
 				// simply ignore the rest of it.
