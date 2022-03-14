@@ -27,6 +27,9 @@ char *serialize(struct packet *packet, bool destroy)
 	char *serialized_packet = calloc(PAYLOAD_MAX_LENGTH, sizeof(char));
 
 	pthread_mutex_lock(&me.packet_counter_mutex);
+	// since this function is only called on packets
+	// constructed in this router we can create a new packet
+	// id for each and all of them.
 	serialized_packet[0] = me.packet_counter++;
 	pthread_mutex_unlock(&me.packet_counter_mutex);
 
@@ -43,19 +46,21 @@ char *serialize(struct packet *packet, bool destroy)
 			serialized_packet[1] = CONTROL;
 
 			int index = 2;
+			debug("%s", serialized_packet);
 			index += sprintf(&serialized_packet[index], "%d\n", me.id);
+			debug("%s", serialized_packet);
 
-			struct distance_vector *dv = packet->deserialized.payload.distance;
+			struct distance_vector *dv;
 			for (dv = packet->deserialized.payload.distance; dv; dv = dv->next)
 			{
 				int prior_index = index;
-				index += sprintf(&serialized_packet[index], "%d %d\n", dv->virtual_address, dv->distance);
+				index += sprintf(&(serialized_packet[index]), "%d %d\n", dv->virtual_address, dv->distance);
 
 				// if the content is bigger than 98 chars, we
 				// simply ignore the rest of it.
 				// in a real impl we would have to split the
 				// content into multiple packets.
-				if (index >= PAYLOAD_MAX_LENGTH - 2)
+				if (index >= PAYLOAD_MAX_LENGTH)
 				{
 					serialized_packet[prior_index] = '\0';
 					break;
@@ -79,10 +84,11 @@ char *serialize(struct packet *packet, bool destroy)
 
 			serialized_packet[1] = DATA;
 			index = 2;
-			index += sprintf(&serialized_packet[index], "%d %d\n", packet->deserialized.source, packet->deserialized.destination);
+			index += sprintf(&serialized_packet[index], "%d %d\n", me.id, packet->deserialized.destination);
 
 			// payload can't take up the last and first char of the packet.
-			memcpy(&serialized_packet[index], &packet->deserialized.payload.message[0], strlen(packet->deserialized.payload.message) - index);
+			int len = strlen(packet->deserialized.payload.message);
+			memcpy(&serialized_packet[index], &packet->deserialized.payload.message[0], len > PAYLOAD_MAX_LENGTH? PAYLOAD_MAX_LENGTH: len);
 			if (destroy)
 				free(packet->deserialized.payload.message);
 
@@ -222,8 +228,13 @@ void enqueue_to_output(struct packet *packet)
 		char *packet_id = evaluate_packet_id(packet);
 		info("fila de saída cheia, descartando pacote #%s de %d", packet_id, packet->deserialized.source);
 		free(packet_id);
+		free(packet->serialized);
+		if (packet->deserialized.type == CONTROL)
+			free_distance_vector(packet->deserialized.payload.distance);
+		free(packet);
 		return;
 	}
+	// @TODO keep going from here
 
 	struct queue_item *qi = me.output.head;
 	if (!qi)

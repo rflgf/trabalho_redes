@@ -84,30 +84,36 @@ int main(int argc, char **argv)
 					printf("de: %d\npara:%d\n", me.id, me.id);
 					printf("%s", message);
 					printf("---------------------------------------\n");
+					free(message);
 					continue;
+					pthread_mutex_unlock(&me.terminal_mutex);
 				}
+				else
+				{
+					pthread_mutex_unlock(&me.terminal_mutex);
 
-				pthread_mutex_unlock(&me.terminal_mutex);
+					struct packet *p = malloc(sizeof(struct packet));
+					p->deserialized.type = DATA;
+					p->deserialized.source = me.id;
+					p->deserialized.destination = destination;
+					p->deserialized.index = 0;
+					p->deserialized.payload.message = message;
+					serialize(p, false);
 
-				struct packet *p = malloc(sizeof(struct packet));
-				p->deserialized.type = DATA;
-				p->deserialized.source = me.id;
-				p->deserialized.destination = destination;
-				p->deserialized.index = 0;
-				p->deserialized.payload.message = message;
-				serialize(p, false);
-
-				struct queue_item *qi = malloc(sizeof(struct queue_item));
-				qi->next = NULL;
-				qi->packet = p;
-
-				enqueue(p);
+					enqueue(p);
+				}
 				break;
 
 			case SLEEP_OR_WAKE:
 				pthread_mutex_lock(&me.mutex);
 				me.enabled = !me.enabled;
-				pthread_cond_broadcast(&me.sleep_cond_var);
+				if (me.enabled)
+				{
+					struct link *neighbour = me.neighbouring_routers;
+					for (; neighbour; neighbour = neighbour->next)
+						neighbour->enabled = true;
+					pthread_cond_broadcast(&me.sleep_cond_var);
+				}
 				pthread_mutex_unlock(&me.mutex);
 				break;
 
@@ -119,7 +125,7 @@ int main(int argc, char **argv)
 					printf("%d\t%d\t\t%s\n",
 						l->id,
 						l->cost_to,
-						l->enabled? "\033[0;32mV\033[0m": "\033[0;31m-\033[0m");
+						l->enabled? "\033[0;32mV\033[0m": "\033[0;31mx\033[0m");
 				printf("---------------------------------------\n");
 				break;
 

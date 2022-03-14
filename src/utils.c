@@ -166,7 +166,6 @@ struct link *get_link_by_id(router_id id)
 	for (neighbour = me.neighbouring_routers; neighbour; neighbour = neighbour->next)
 		if (neighbour->id == id)
 			return neighbour;
-
 	return NULL;
 }
 
@@ -256,6 +255,8 @@ int parse_link_config(char *filename, router_id my_virtual_address)
 
 void add_link(router_id neighbour_id, cost cost)
 {
+
+	debug("adding id %d with cost %d", neighbour_id, cost);
 	struct link *new_neighbour = malloc(sizeof(struct link));
 
 	// we keep it false until we know for sure it's being used.
@@ -270,9 +271,9 @@ void add_link(router_id neighbour_id, cost cost)
 		me.neighbouring_routers = new_neighbour;
 	else
 	{
-		struct link *neighbours;
-		for (neighbours = me.neighbouring_routers; neighbours->next; neighbours = neighbours->next)
+		struct link *neighbour;
+		for (neighbour = me.neighbouring_routers; neighbour->next; neighbour = neighbour->next)
 			;
-		neighbours->next = new_neighbour;
+		neighbour->next = new_neighbour;
 	}
 }
