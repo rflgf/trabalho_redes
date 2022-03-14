@@ -1,54 +1,54 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdbool.h>
-#include <stdarg.h>
-#include <semaphore.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
+	#include <stdlib.h>
+	#include <stdio.h>
+	#include <string.h>
+	#include <stdbool.h>
+	#include <stdarg.h>
+	#include <semaphore.h>
+	#include <arpa/inet.h>
+	#include <netinet/in.h>
 
-#include "utils.h"
-#include "router.h"
-#include "table_handler.h"
+	#include "utils.h"
+	#include "router.h"
+	#include "table_handler.h"
 
-#ifdef INFO
-void info(const char *format, ...)
-{
-	pthread_mutex_lock(&me.terminal_mutex);
-	printf("\033[0;32m[ info  ] \033[0m"); //
-    va_list args;
-    va_start(args, format);
-    vfprintf(stdout, format, args);
-    va_end(args);
-    printf("\n");
-	pthread_mutex_unlock(&me.terminal_mutex);
-}
-#endif
+	#ifdef INFO
+	void info(const char *format, ...)
+	{
+		pthread_mutex_lock(&me.terminal_mutex);
+		printf("\033[0;32m[ info  ] \033[0m"); //
+		va_list args;
+		va_start(args, format);
+		vfprintf(stdout, format, args);
+		va_end(args);
+		printf("\n");
+		pthread_mutex_unlock(&me.terminal_mutex);
+	}
+	#endif
 
-#ifdef DEBUG
-void debug(const char *format, ...)
-{
-	pthread_mutex_lock(&me.terminal_mutex);
-    printf("\033[0;36m[ debug ] \033[0m"); // cyan
-    va_list args;
-    va_start(args, format);
-    vfprintf(stdout, format, args);
-    va_end(args);
-    printf("\n");
-	pthread_mutex_unlock(&me.terminal_mutex);
-}
-#endif
+	#ifdef DEBUG
+	void debug(const char *format, ...)
+	{
+		pthread_mutex_lock(&me.terminal_mutex);
+		printf("\033[0;36m[ debug ] \033[0m"); // cyan
+		va_list args;
+		va_start(args, format);
+		vfprintf(stdout, format, args);
+		va_end(args);
+		printf("\n");
+		pthread_mutex_unlock(&me.terminal_mutex);
+	}
+	#endif
 
-typedef int cost;
+	typedef int cost;
 
-char router_filename[100] = "roteador.config";
-char link_filename[100]   = "enlaces.config";
-int CONNECTION_TIMEOUT    = 6;					// in seconds
-int SLEEP_TIME			  = 2;					// in seconds
-int MAX_QUEUE_ITEMS		  = 6;
+	char router_filename[100] = "roteador.config";
+	char link_filename[100]   = "enlaces.config";
+	int CONNECTION_TIMEOUT    = 6;					// in seconds
+	int SLEEP_TIME			  = 2;					// in seconds
+	int MAX_QUEUE_ITEMS		  = 6;
 
-void die(const char *format, ...)
-{
+	void die(const char *format, ...)
+	{
 	va_list args;
 	char color[200] = "\033[0;31m[ error ] ";
 	char *color_end = "\n\033[0m\0";
@@ -270,9 +270,9 @@ void add_link(router_id neighbour_id, cost cost)
 		me.neighbouring_routers = new_neighbour;
 	else
 	{
-		struct link *neighbours = me.neighbouring_routers;
-		while (neighbours->next)
-			neighbours = neighbours->next;
+		struct link *neighbours;
+		for (neighbours = me.neighbouring_routers; neighbours->next; neighbours = neighbours->next)
+			;
 		neighbours->next = new_neighbour;
 	}
 }
