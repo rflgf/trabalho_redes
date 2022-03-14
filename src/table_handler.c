@@ -85,7 +85,7 @@ struct distance_vector *populate_dv_with_links()
 
 			if (!ret)
 			{
-				ret = new_item;
+				ret = new_item; // create head.
 				aux = new_item;
 			}
 			else
@@ -100,10 +100,11 @@ struct distance_vector *populate_dv_with_links()
 
 struct distance_vector *get_dv_by_destination(router_id destination, struct distance_vector *table)
 {
-	for (; table; table = table->next)
-		if (table->virtual_address == destination)
-			return table;
-	return NULL;
+	struct distance_vector *item;
+	for (item = table; item; item = item->next)
+		if (item->virtual_address == destination)
+			break;
+	return item;
 }
 
 void enqueue_to_distance_vector(struct distance_vector *dv, struct distance_vector *list)
@@ -111,12 +112,15 @@ void enqueue_to_distance_vector(struct distance_vector *dv, struct distance_vect
 	if (!list)
 	{
 		list = dv;
+		list->next = NULL;
 		return;
 	}
 
-	for (; list; list = list->next)
-	list->next = dv;
-	dv->next = NULL;
+	struct distance_vector *list_item;
+	for (list_item = list; list_item->next; list_item = list_item->next)
+		;
+	list_item->next = dv;
+	list_item->next = NULL;
 }
 
 // creates a distance vector based on the active links' distance vectors.
@@ -202,16 +206,17 @@ struct table_item *populate_table_with_links()
 	return ret;
 }
 
-void enqueue_to_table(struct table_item *item, struct table_item *table)
+void enqueue_to_table(struct table_item *new_item, struct table_item *table)
 {
 	if (!table)
-		table = item;
+		table = new_item;
 
 	else
 	{
-		for (; table; table = table->next)
-			continue;
-		table->next = item;
+		struct table_item *item;
+		for (item = table; item; item = item->next)
+			;
+		item->next = new_item;
 	}
 }
 
