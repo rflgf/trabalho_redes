@@ -18,11 +18,10 @@ void *sender_f(void *arg)
 		}
 
 		struct packet *p = dequeue(&me.output);
-		debug("next hop is %d", p->deserialized.next_hop);
+		debug("next hop is %d for desitnation %d", p->deserialized.next_hop, p->deserialized.destination);
 		struct link *l = get_link_by_id(p->deserialized.next_hop);
 		if (!l)
 		{
-				debug("id was %d", p->deserialized.next_hop);
 			char *packet_id = evaluate_packet_id(p);
 			info("enlace %d desabilitado, descartando pacote #%s de %d", p->deserialized.next_hop, packet_id, p->deserialized.source);
 			free(packet_id);

@@ -30,7 +30,7 @@ char *serialize(struct packet *packet, bool destroy)
 	// since this function is only called on packets
 	// constructed in this router we can create a new packet
 	// id for each and all of them.
-	serialized_packet[0] = me.packet_counter++;
+	serialized_packet[0] = ++me.packet_counter;
 	pthread_mutex_unlock(&me.packet_counter_mutex);
 
 	switch (packet->deserialized.type)
@@ -88,17 +88,21 @@ char *serialize(struct packet *packet, bool destroy)
 
 			// payload can't take up the last and first char of the packet.
 			int len = strlen(packet->deserialized.payload.message);
+			debug("len is %d", len);
 			memcpy(&serialized_packet[index], &packet->deserialized.payload.message[0], len > PAYLOAD_MAX_LENGTH? PAYLOAD_MAX_LENGTH: len);
 			if (destroy)
 				free(packet->deserialized.payload.message);
 
 			break;
+		default:
+			debug("fvck %c", packet->deserialized.type);
 	}
 
 	packet->serialized = serialized_packet;
 
 	if (destroy)
 		free(packet);
+	debug("serialized packet as %s.", serialized_packet);
 	return serialized_packet;
 }
 
@@ -117,6 +121,8 @@ int deserialize_header(struct packet *packet)
 		case DATA:
 			packet->deserialized.index += sscanf(&packet->serialized[2], "%d %d\n", &packet->deserialized.source, &packet->deserialized.destination);
 			break;
+		default:
+			debug("dafuk");
 	}
 
 	if (packet->deserialized.destination != me.id)
@@ -182,6 +188,7 @@ void enqueue_to_input(char *serialized_packet)
 		#ifdef INFO
 		struct packet p;
 		p.serialized = serialized_packet;
+		debug("serialized packet is %s.", p.serialized);
 		deserialize_header(&p);
 		char *packet_id = evaluate_packet_id(&p);
 		info("fila de entrada cheia, descartando pacote #%s de %d", packet_id, p.deserialized.source);
@@ -237,22 +244,16 @@ void enqueue_to_output(struct packet *packet)
 	// @TODO keep going from here
 
 	struct queue_item *qi = me.output.head;
+	struct queue_item *new_queue_item = malloc(sizeof(struct queue_item));
+	new_queue_item->packet = packet;
+	new_queue_item->next   = NULL;
 	if (!qi)
-	{
-		struct queue_item *new_queue_item = malloc(sizeof(struct queue_item));
-		new_queue_item->packet = packet;
-		new_queue_item->next   = NULL;
-		me.output.head		   = new_queue_item;
-	}
+		me.output.head = new_queue_item;
 	else
 	{
 		while (qi->next)
 			qi = qi->next;
-
-		struct queue_item *new_queue_item = malloc(sizeof(struct queue_item));
-		new_queue_item->next   = NULL;
-		new_queue_item->packet = packet;
-		qi->next			   = new_queue_item;
+		qi->next = new_queue_item;
 	}
 
 	me.output.current_size++;
@@ -278,7 +279,7 @@ struct packet *dequeue(struct packet_queue *queue)
 	if (queue->current_size == 0)
 		queue->head = NULL;
 	pthread_mutex_unlock(&queue->mutex);
-	//assert(ret);
+	assert(ret);
 	return ret;
 }
 

@@ -18,6 +18,7 @@ enum __attribute__((packed)) packet_type {
 struct distance_vector {
 	router_id				virtual_address;
 	cost					distance; // a.k.a. cost
+	router_id				next_hop;
 	struct distance_vector *next;
 };
 
