@@ -22,7 +22,7 @@ void *packet_handler_f(void *arg)
 		if (p->deserialized.destination == me.id)
 		{
 			char *packet_id = evaluate_packet_id(p);
-			info("recebido pacote #%s de %d.", packet_id, p->deserialized.source);
+			info("recebido pacote #%s de %d com conteúdo [%s].", packet_id, p->deserialized.source, p->serialized);
 			free(packet_id);
 			switch (p->deserialized.type)
 			{
@@ -39,7 +39,7 @@ void *packet_handler_f(void *arg)
 
 					printf("---------- mensagem recebida ----------\n");
 					printf("de: %d\npara:%d\n", p->deserialized.source, p->deserialized.destination);
-					printf("\t%s\n", message);
+					printf("%s\n", message);
 					printf("---------------------------------------\n");
 					break;
 			}
@@ -57,18 +57,31 @@ void *packet_handler_f(void *arg)
 	}
 }
 
+void print_distance_vector(struct distance_vector *dv)
+{
+	debug("started:");
+	for(; dv; dv = dv->next)
+		debug("(in dest, next_hop, cost format)[%d %d %d]", dv->virtual_address, dv->next_hop, dv->distance);
+	debug("ended.");
+}
+
 // replaces the link-associated router's last DV by `dv_start`.
 // `source` indicates what router address the DVs were sent by.
 void evaluate_distance_vector(router_id source, struct distance_vector *dv_start)
 {
+
 	pthread_mutex_lock(&me.mutex);
 
 	struct link *source_link = get_link_by_id(source);
+	debug("trocando vetor distancia do link [%d]", source_link->id);
 
 	source_link->enabled = true;
 	source_link->last_heard_from = time(NULL);
-	free_distance_vector(source_link->last_dv);
+	if (source_link->last_dv)
+		free_distance_vector(source_link->last_dv);
 	source_link->last_dv = dv_start;
+
+	print_distance_vector(source_link->last_dv);
 
 	pthread_mutex_unlock(&me.mutex);
 }

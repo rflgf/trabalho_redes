@@ -162,7 +162,6 @@ int parse_args(int argc, char **argv)
 
 struct link *get_link_by_id(router_id id)
 {
-	assert(id);
 	struct link *neighbour;
 	for (neighbour = me.neighbouring_routers; neighbour; neighbour = neighbour->next)
 		if (neighbour->id == id && neighbour->enabled)

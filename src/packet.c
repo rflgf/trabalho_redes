@@ -46,15 +46,17 @@ char *serialize(struct packet *packet, bool destroy)
 			serialized_packet[1] = CONTROL;
 
 			int index = 2;
-			debug("%s", serialized_packet);
+			debug("serialized packet before read destination read on control case [%s]", serialized_packet);
 			index += sprintf(&serialized_packet[index], "%d\n", me.id);
-			debug("%s", serialized_packet);
+			debug("serialized packet after read destination read on control case [%s]", serialized_packet);
 
 			struct distance_vector *dv;
 			for (dv = packet->deserialized.payload.distance; dv; dv = dv->next)
 			{
 				int prior_index = index;
-				index += sprintf(&(serialized_packet[index]), "%d %d\n", dv->virtual_address, dv->distance);
+				int written_chars;
+				sprintf(&(serialized_packet[index]), "%d %d\n%n", dv->virtual_address, dv->distance, &written_chars);
+				index += written_chars;
 
 				// if the content is bigger than 98 chars, we
 				// simply ignore the rest of it.
@@ -84,7 +86,9 @@ char *serialize(struct packet *packet, bool destroy)
 
 			serialized_packet[1] = DATA;
 			index = 2;
-			index += sprintf(&serialized_packet[index], "%d %d\n", me.id, packet->deserialized.destination);
+			int written_chars;
+			sprintf(&serialized_packet[index], "%d %d\n%n", me.id, packet->deserialized.destination, &written_chars);
+			index += written_chars;
 
 			// payload can't take up the last and first char of the packet.
 			int len = strlen(packet->deserialized.payload.message);
@@ -95,14 +99,14 @@ char *serialize(struct packet *packet, bool destroy)
 
 			break;
 		default:
-			debug("fvck %c", packet->deserialized.type);
+			debug("this [%c] is the packet type flag", packet->deserialized.type);
 	}
 
 	packet->serialized = serialized_packet;
 
 	if (destroy)
 		free(packet);
-	debug("serialized packet as %s.", serialized_packet);
+	debug("serialized packet as [%s].", serialized_packet);
 	return serialized_packet;
 }
 
@@ -111,18 +115,22 @@ int deserialize_header(struct packet *packet)
 	packet->deserialized.id		= packet->serialized[0];
 	packet->deserialized.type	= packet->serialized[1];
 	packet->deserialized.index	= 2;
+	int read_chars;
+
 	switch(packet->deserialized.type)
 	{
 		case CONTROL:
 			packet->deserialized.destination = me.id; // control messages are only shared between neighbours.
-			packet->deserialized.index += sscanf(&packet->serialized[2], "%d\n", &packet->deserialized.source);
+			sscanf(&packet->serialized[2], "%d\n%n", &packet->deserialized.source, &read_chars);
+			packet->deserialized.index += read_chars;
 			break;
 
 		case DATA:
-			packet->deserialized.index += sscanf(&packet->serialized[2], "%d %d\n", &packet->deserialized.source, &packet->deserialized.destination);
+			sscanf(&packet->serialized[2], "%d %d\n%n", &packet->deserialized.source, &packet->deserialized.destination, &read_chars);
+			packet->deserialized.index += read_chars;
 			break;
 		default:
-			debug("dafuk");
+			debug("trying to deserialize header but packet type is [%c]", packet->deserialized.type);
 	}
 
 	if (packet->deserialized.destination != me.id)
@@ -152,29 +160,45 @@ int deserialize_header(struct packet *packet)
 			packet->deserialized.next_hop);
 		free(packet_id);
 	}
+	debug("deserialized header as type [%c], origin [%d], destination [%d] and next hop [%d]", packet->deserialized.type, packet->deserialized.source, packet->deserialized.destination, packet->deserialized.next_hop);
 	return 0;
 }
 
 void deserialize_payload(struct packet *packet)
 {
 	int index = packet->deserialized.index;
+	debug("imma deserialize the payload from %d onward", packet->deserialized.index);
+	int num_chars_read;
 	switch (packet->deserialized.type)
 	{
 		case CONTROL:
+			packet->deserialized.payload.distance = NULL;
 			while (index < PAYLOAD_MAX_LENGTH - 1)
 			{
 				if (packet->serialized[index + 1] == '\0')
+				{
+					debug("stopped reading the payload cuz it was shorter than the maximum");
+					debug("index was %d", index);
 					break;
+				}
 
 				struct distance_vector *dv = malloc(sizeof(struct distance_vector));
-				index += sscanf(&packet->serialized[index], "%d %d\n", &dv->virtual_address, &dv->distance);
+				sscanf(&packet->serialized[index], "%d %d\n%n", &dv->virtual_address, &dv->distance, &num_chars_read);
+				index += num_chars_read;
+				debug("ok so i read %d and %d", dv->virtual_address, dv->distance);
+				assert(dv);
 
 				dv->next = NULL;
+
+				enqueue_to_distance_vector(dv, &packet->deserialized.payload.distance);
 			}
+			packet->deserialized.index = index;
+			assert(packet->deserialized.payload.distance);
+			print_distance_vector(packet->deserialized.payload.distance);
 			break;
 
 		case DATA:
-			packet->deserialized.payload.message = &packet->serialized[1];
+			packet->deserialized.payload.message = &packet->serialized[2];
 			break;
 	}
 }
@@ -188,7 +212,7 @@ void enqueue_to_input(char *serialized_packet)
 		#ifdef INFO
 		struct packet p;
 		p.serialized = serialized_packet;
-		debug("serialized packet is %s.", p.serialized);
+		debug("deserializing header on enqueue_to_input");
 		deserialize_header(&p);
 		char *packet_id = evaluate_packet_id(&p);
 		info("fila de entrada cheia, descartando pacote #%s de %d", packet_id, p.deserialized.source);
@@ -235,7 +259,7 @@ void enqueue_to_output(struct packet *packet)
 		char *packet_id = evaluate_packet_id(packet);
 		info("fila de saída cheia, descartando pacote #%s de %d", packet_id, packet->deserialized.source);
 		free(packet_id);
-		free(packet->serialized);
+		// free(packet->serialized);
 		if (packet->deserialized.type == CONTROL)
 			free_distance_vector(packet->deserialized.payload.distance);
 		free(packet);

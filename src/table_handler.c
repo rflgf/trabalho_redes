@@ -129,20 +129,21 @@ struct distance_vector *get_dv_by_destination(router_id destination, struct dist
 	return item;
 }
 
-void enqueue_to_distance_vector(struct distance_vector *dv, struct distance_vector *list)
+void enqueue_to_distance_vector(struct distance_vector *dv, struct distance_vector **list)
 {
-	if (!list)
+	assert(dv);
+	if (!*list)
 	{
-		list = dv;
-		list->next = NULL;
+		*list = dv;
+		(*list)->next = NULL;
 		return;
 	}
 
 	struct distance_vector *list_item;
-	for (list_item = list; list_item->next; list_item = list_item->next)
+	for (list_item = *list; list_item->next; list_item = list_item->next)
 		;
 	list_item->next = dv;
-	list_item->next = NULL;
+	dv->next = NULL;
 }
 
 // creates a distance vector based on the active links' distance vectors.
@@ -187,7 +188,7 @@ struct distance_vector *calculate_distance_vector()
 					continue;
 				}
 
-				enqueue_to_distance_vector(dv, ret_dv);
+				enqueue_to_distance_vector(dv, &ret_dv);
 			}
 			else
 				// destination in the table but found a cheaper hop.
