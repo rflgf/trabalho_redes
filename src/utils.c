@@ -46,6 +46,7 @@
 	int CONNECTION_TIMEOUT    = 6;					// in seconds
 	int SLEEP_TIME			  = 2;					// in seconds
 	int MAX_QUEUE_ITEMS		  = 6;
+	int MAX_LINK_COST		  = 100;
 
 	void die(const char *format, ...)
 	{
@@ -164,7 +165,7 @@ struct link *get_link_by_id(router_id id)
 {
 	struct link *neighbour;
 	for (neighbour = me.neighbouring_routers; neighbour; neighbour = neighbour->next)
-		if (neighbour->id == id && neighbour->enabled)
+		if (neighbour->id == id)
 			return neighbour;
 	return NULL;
 }

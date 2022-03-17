@@ -177,7 +177,7 @@ void deserialize_payload(struct packet *packet)
 			{
 				if (packet->serialized[index + 1] == '\0')
 				{
-					debug("stopped reading the payload cuz it was shorter than the maximum");
+					debug("stopped reading the payload earlier cuz it was shorter than the maximum size");
 					debug("index was %d", index);
 					break;
 				}
@@ -194,7 +194,9 @@ void deserialize_payload(struct packet *packet)
 			}
 			packet->deserialized.index = index;
 			assert(packet->deserialized.payload.distance);
+			debug("packetc 196");
 			print_distance_vector(packet->deserialized.payload.distance);
+			debug("packetc 196");
 			break;
 
 		case DATA:
@@ -267,6 +269,25 @@ void enqueue_to_output(struct packet *packet)
 	}
 	// @TODO keep going from here
 
+	if (packet->deserialized.type == DATA)
+	{
+		// resolve next_hop;
+		struct table_item *table = calculate_table();
+		for (; table; table = table->next)
+			if (table->destination == packet->deserialized.destination)
+			{
+				packet->deserialized.next_hop = table->next_hop;
+				// free_table();
+				goto pass;
+			}
+not_pass:
+		info("não encontrou link para o pacote #.");
+		pthread_mutex_unlock(&me.output.mutex);
+		return;
+	}
+
+pass:
+	; // makes compiler happy
 	struct queue_item *qi = me.output.head;
 	struct queue_item *new_queue_item = malloc(sizeof(struct queue_item));
 	new_queue_item->packet = packet;

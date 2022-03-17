@@ -102,6 +102,7 @@ struct distance_vector *populate_dv_with_links()
 			struct distance_vector *new_item = malloc(sizeof(struct distance_vector));
 			new_item->virtual_address = neighbour->id;
 			new_item->distance = neighbour->cost_to;
+			new_item->next_hop = neighbour->id;
 			new_item->next = NULL;
 
 			if (!ret)
@@ -120,7 +121,7 @@ struct distance_vector *populate_dv_with_links()
 }
 
 // maybe distance_vector should have a next_hop field and this should return next hop instead?
-struct distance_vector *get_dv_by_destination(router_id destination, struct distance_vector *table)
+struct distance_vector *get_dv_from_table_by_destination(router_id destination, struct distance_vector *table)
 {
 	struct distance_vector *item;
 	for (item = table; item; item = item->next)
@@ -168,10 +169,13 @@ struct distance_vector *calculate_distance_vector()
 			if (neighbours_dv->virtual_address == me.id)
 				continue;
 
-			struct distance_vector *dv = get_dv_by_destination(neighbours_dv->virtual_address, ret_dv);
+			struct distance_vector *dv = get_dv_from_table_by_destination(neighbours_dv->virtual_address, ret_dv);
 			// destination not in table yet, create it.
 			if (!dv)
 			{
+				if (neighbours_dv->distance > MAX_LINK_COST)
+					continue;
+
 				dv = malloc(sizeof(struct distance_vector));
 				dv->virtual_address = neighbours_dv->virtual_address;
 				dv->distance = neighbours_dv->distance + neighbour->cost_to;
@@ -192,7 +196,8 @@ struct distance_vector *calculate_distance_vector()
 			}
 			else
 				// destination in the table but found a cheaper hop.
-				if (dv->distance > neighbours_dv->distance + neighbour->cost_to)
+				if (dv->distance > neighbours_dv->distance + neighbour->cost_to &&
+					dv->distance < MAX_LINK_COST)
 				{
 					dv->next_hop = neighbour->id;
 					dv->distance = neighbours_dv->distance + neighbour->cost_to;
@@ -233,7 +238,10 @@ struct table_item *calculate_table()
 	struct table_item *ret_table = NULL;
 	struct table_item *aux;
 
-	struct distance_vector *my_dv;
+	struct distance_vector *my_dv = calculate_distance_vector();
+	info("startin for real");
+	print_distance_vector(my_dv);
+	info("finished :)");
 	for (my_dv = calculate_distance_vector(); my_dv; my_dv = my_dv->next)
 	{
 		struct table_item *new_ti = malloc(sizeof(struct table_item));

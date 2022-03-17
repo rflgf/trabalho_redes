@@ -31,6 +31,7 @@ void debug(const char *format, ...);
 int MAX_QUEUE_ITEMS;
 int SLEEP_TIME;
 int CONNECTION_TIMEOUT;
+int MAX_LINK_COST;
 
 typedef int router_id;
 typedef int cost;

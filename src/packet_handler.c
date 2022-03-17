@@ -59,10 +59,8 @@ void *packet_handler_f(void *arg)
 
 void print_distance_vector(struct distance_vector *dv)
 {
-	debug("started:");
 	for(; dv; dv = dv->next)
-		debug("(in dest, next_hop, cost format)[%d %d %d]", dv->virtual_address, dv->next_hop, dv->distance);
-	debug("ended.");
+		info("(in dest, next_hop, cost format)[%d %d %d]", dv->virtual_address, dv->next_hop, dv->distance);
 }
 
 // replaces the link-associated router's last DV by `dv_start`.
@@ -72,6 +70,7 @@ void evaluate_distance_vector(router_id source, struct distance_vector *dv_start
 
 	pthread_mutex_lock(&me.mutex);
 
+	debug("tryna get %d", source);
 	struct link *source_link = get_link_by_id(source);
 	debug("trocando vetor distancia do link [%d]", source_link->id);
 
@@ -80,8 +79,6 @@ void evaluate_distance_vector(router_id source, struct distance_vector *dv_start
 	if (source_link->last_dv)
 		free_distance_vector(source_link->last_dv);
 	source_link->last_dv = dv_start;
-
-	print_distance_vector(source_link->last_dv);
 
 	pthread_mutex_unlock(&me.mutex);
 }
