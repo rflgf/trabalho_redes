@@ -4,10 +4,7 @@
 #include <string.h>
 #include <pthread.h>
 
-#include "utils.h"
 #include "packet.h"
-#include "table_handler.h"
-
 
 void free_distance_vector(struct distance_vector *dv)
 {

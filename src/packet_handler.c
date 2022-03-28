@@ -1,11 +1,9 @@
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <pthread.h>
+	#include <stdlib.h>
+	#include <stdbool.h>
+	#include <stdio.h>
+	#include <pthread.h>
 
 #include "packet_handler.h"
-#include "router.h"
-#include "packet.h"
 
 void *packet_handler_f(void *arg)
 {

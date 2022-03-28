@@ -1,11 +1,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "packet.h"
 #include "sender.h"
-#include "router.h"
-#include "table_handler.h"
-#include "utils.h"
 
 void *sender_f(void *arg)
 {

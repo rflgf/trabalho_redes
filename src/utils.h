@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <stddef.h>
 
+#include "packet.h"
+#include "router.h"
+#include "table_handler.h"
+
 #ifdef INFO
 void info(const char *format, ...);
 #else
@@ -28,10 +32,10 @@ void debug(const char *format, ...);
 #define PARSE_ERR_NO_VIRT_ADD_PROVIDED 4
 #define SOCKET_ERR_PORT				   5
 
-int MAX_QUEUE_ITEMS;
-int SLEEP_TIME;
-int CONNECTION_TIMEOUT;
-int MAX_LINK_COST;
+extern int MAX_QUEUE_ITEMS;
+extern int SLEEP_TIME;
+extern int CONNECTION_TIMEOUT;
+extern int MAX_LINK_COST;
 
 typedef int router_id;
 typedef int cost;

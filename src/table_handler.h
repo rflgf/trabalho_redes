@@ -1,9 +1,10 @@
 #ifndef TABLE_HANDLER
 #define TABLE_HANDLER
 
-#include "router.h"
-#include "packet.h"
 #include "utils.h"
+
+typedef int cost;
+typedef int router_id;
 
 struct distance_vector *calculate_distance_vector();
 

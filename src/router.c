@@ -7,7 +7,8 @@
 #include <sys/types.h>
 
 #include "router.h"
-#include "utils.h"
+
+struct router me;
 
 void initialize_router(int id, unsigned short int port, char *ip_address)
 {

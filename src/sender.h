@@ -1,7 +1,10 @@
 #ifndef SENDER
 #define SENDER
 
+#include "packet.h"
 #include "router.h"
+#include "table_handler.h"
+#include "utils.h"
 
 void *sender_f(void *arg);
 

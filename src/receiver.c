@@ -1,8 +1,6 @@
 #include <string.h>
 
 #include "receiver.h"
-#include "packet.h"
-#include "router.h"
 
 // does not deserialize anything, just listens, gets queue semaphore and appends message (as char) to queue
 

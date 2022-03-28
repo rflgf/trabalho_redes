@@ -3,12 +3,11 @@
 #include <semaphore.h>
 #include <stdbool.h>
 
-#include "utils.h"
-
 #define PAYLOAD_MAX_LENGTH 100
 
 typedef unsigned char packet_id;
 typedef int router_id;
+typedef int cost;
 
 enum __attribute__((packed)) packet_type {
 	CONTROL = 'c',
@@ -57,6 +56,9 @@ struct packet_queue {
 	pthread_mutex_t	   mutex;
 	sem_t			   semaphore; // at most MAX_QUEUE_ITEMS.
 };
+
+#include "table_handler.h"
+#include "utils.h"
 
 // returns a null-terminated string with at most 100 bytes
 // and destroys the packet object passed as argument if

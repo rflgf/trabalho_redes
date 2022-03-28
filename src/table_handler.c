@@ -2,9 +2,6 @@
 #include <unistd.h>
 
 #include "table_handler.h"
-#include "packet.h"
-#include "router.h"
-#include "utils.h"
 
 // every N seconds calculate my distance vector (make a function for this because packet_handler.c will need it too) and send it to every enabled link
 // check for timestamps associated with the table's distance vectors and remove the ones that are outdated

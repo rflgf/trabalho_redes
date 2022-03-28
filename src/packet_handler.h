@@ -2,6 +2,7 @@
 #define PACKET_HANDLER
 
 #include "packet.h"
+#include "router.h"
 
 typedef int router_id;
 typedef int cost;

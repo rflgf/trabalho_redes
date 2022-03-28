@@ -7,7 +7,6 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
-#include "table_handler.h"
 #include "packet.h"
 
 typedef int router_id;
@@ -51,7 +50,11 @@ struct router {
 	pthread_cond_t		 sleep_cond_var;
 };
 
-struct router me;
+extern struct router me;
+
+#include "table_handler.h"
+#include "utils.h"
+#include "packet.h"
 
 void initialize_router(int id, unsigned short int port, char *ip_address);
 

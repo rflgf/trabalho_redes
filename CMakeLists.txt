@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.13)
 
+set(CMAKE_C_COMPILER "clang")
+
 project(trabalho_redes)
 
-set(CMAKE_C_FLAGS "-Wall -g -DINFO")
+set(CMAKE_C_FLAGS "-DINFO")
 
 set(trabalho_redes_src
 	"src/main.c"

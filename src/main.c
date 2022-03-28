@@ -8,9 +8,9 @@
 
 #include <pthread.h>
 
-#include "utils.h"
 #include "packet.h"
 #include "router.h"
+#include "utils.h"
 #include "table_handler.h"
 #include "packet_handler.h"
 #include "sender.h"
